@@ -18,10 +18,12 @@ namespace StreamCompaction {
          * (Optional) For better understanding before starting moving to GPU, you can simulate your GPU scan in this function first.
          */
 
-        void exclusivePrefixSum(int n, int* odata, const int* idata) {
+        void exclusivePrefixSum(const int n, const int* idata, int* odata)
+        {
             int prefixSum = 0;
 
-            for (int i = 0; i < n; ++i) {
+            for (int i = 0; i < n; ++i)
+            {
                 odata[i] = prefixSum;
                 prefixSum += idata[i];
             }
@@ -30,7 +32,7 @@ namespace StreamCompaction {
         void scan(int n, int *odata, const int *idata) {
             timer().startCpuTimer();
             
-            exclusivePrefixSum(n, odata, idata);
+            exclusivePrefixSum(n, idata, odata);
 
             timer().endCpuTimer();
         }
@@ -47,7 +49,8 @@ namespace StreamCompaction {
 
             for (int i = 0; i < n; ++i)
             {
-                if (idata[i] != 0) {
+                if (idata[i] != 0)
+                {
                     odata[compactedCount++] = idata[i];
                 }
             }
@@ -65,7 +68,8 @@ namespace StreamCompaction {
         int compactWithScan(int n, int *odata, const int *idata) {
             timer().startCpuTimer();
 
-            if (n <= 0) {
+            if (n <= 0)
+            {
                 timer().endCpuTimer();
                 return 0;
             }
@@ -80,14 +84,15 @@ namespace StreamCompaction {
             }
 
             // scan the array of 0s and 1s
-            exclusivePrefixSum(n, exclusivePrefixSumResult, binaryMap);
+            exclusivePrefixSum(n, binaryMap, exclusivePrefixSumResult);
 
             // scatter
             int compactedCount = 0;
 
             for (int i = 0; i < n - 1; ++i)
             {
-                if (exclusivePrefixSumResult[i] != exclusivePrefixSumResult[i + 1]) {
+                if (exclusivePrefixSumResult[i] != exclusivePrefixSumResult[i + 1])
+                {
                     odata[compactedCount++] = idata[i];
                 }
             }

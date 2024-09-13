@@ -6,7 +6,7 @@ namespace StreamCompaction {
     namespace CPU {
         StreamCompaction::Common::PerformanceTimer& timer();
 
-        void exclusivePrefixSum(int n, int* odata, const int* idata);
+        void exclusivePrefixSum(const int n, const int* idata, int* odata);
 
         void scan(int n, int *odata, const int *idata);
 
