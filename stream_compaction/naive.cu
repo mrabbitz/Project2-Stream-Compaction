@@ -14,39 +14,39 @@ namespace StreamCompaction {
             return timer;
         }
 
-        __global__ void kernelNaiveInclusivePrefixSumIteration(const int n, const int lowerBound, const int* idata, int* odata)
+        __global__ void kernelNaiveInclusivePrefixSumIteration(const int n, const int offset, const int* idata, int* odata)
         {
-            int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-            if (index >= n)
+            int g_index = (blockIdx.x * blockDim.x) + threadIdx.x;
+            if (g_index >= n)
             {
                 return;
             }
 
-            if (index >= lowerBound)
+            if (g_index >= offset)
             {
-                odata[index] = idata[index - lowerBound] + idata[index];
+                odata[g_index] = idata[g_index - offset] + idata[g_index];
             }
             else
             {
-                odata[index] = idata[index];
+                odata[g_index] = idata[g_index];
             }
         }
 
         __global__ void kernelInclusiveToExclusivePrefixSum(const int n, const int* idata, int* odata)
         {
-            int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-            if (index >= n)
+            int g_index = (blockIdx.x * blockDim.x) + threadIdx.x;
+            if (g_index >= n)
             {
                 return;
             }
 
-            if (index > 0)
+            if (g_index > 0)
             {
-                odata[index] = idata[index - 1];
+                odata[g_index] = idata[g_index - 1];
             }
-            else if (index == 0)
+            else if (g_index == 0)
             {
-                odata[index] = 0;
+                odata[g_index] = 0;
             }
         }
 
@@ -81,9 +81,9 @@ namespace StreamCompaction {
             timer().startGpuTimer();
 
             
-            for (int lowerBound = 1; lowerBound < n; lowerBound *= 2)
+            for (int offset = 1; offset < n; offset *= 2)
             {
-                kernelNaiveInclusivePrefixSumIteration<<<blocksPerGrid, blockSize>>>(n, lowerBound, dev_bufferA, dev_bufferB);
+                kernelNaiveInclusivePrefixSumIteration<<<blocksPerGrid, blockSize>>>(n, offset, dev_bufferA, dev_bufferB);
                 checkCUDAError("kernelNaiveInclusivePrefixSumIteration failed!");
 
                 // set the input of the next iteration to the output of this iteration
@@ -105,45 +105,49 @@ namespace StreamCompaction {
 
         __global__ void kernelAddBlockIncrements(const int n, const int* idataBlockSums, const int* idata, int* odata)
         {
-            int index = blockIdx.x * blockDim.x + threadIdx.x;
+            int g_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-            if (index >= n)
+            if (g_index >= n)
             {
                 return;
             }
 
-            odata[index] = idata[index] + idataBlockSums[blockIdx.x];
+            odata[g_index] = idata[g_index] + idataBlockSums[blockIdx.x];
         }
 
         __global__ void kernelExtractBlockSums(const int n, const int numBlocks, const int* idata, int* odata)
         {
-            int index = blockIdx.x * blockDim.x + threadIdx.x;
+            int g_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-            if (index >= numBlocks)
+            if (g_index >= numBlocks)
             {
                 return;
             }
 
-            odata[index] = index == numBlocks - 1 ? idata[n - 1] : idata[(index * blockSize) + blockSize - 1];
+            odata[g_index] = g_index == numBlocks - 1 ? idata[n - 1] : idata[(g_index * blockSize) + blockSize - 1];
         }
 
         __global__ void kernelNaiveExclusivePrefixSumByBlock(const int n, const int* idata, int* odata)
         {
-            // allocated on invocation
-            extern __shared__ int temp[];
-
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
-            int tx = threadIdx.x;
 
-            int* integerData = temp;
+            if (g_index >= n)
+            {
+                return;
+            }
+
+            // allocated on invocation
+            extern __shared__ int doubleBuffer[];
+
+            int tx = threadIdx.x;
 
             int pout = 0, pin = 1;
 
             // Load input into shared memory.
             // This is exclusive scan, so shift right by one
             // and set first element to 0
-            temp[pout * blockSize + tx] = (tx > 0 && g_index < n) ? idata[g_index - 1] : 0;
-            temp[pin * blockSize + tx] = temp[pout * blockSize + tx];
+            doubleBuffer[pout * blockSize + tx] = (tx > 0) ? idata[g_index - 1] : 0;
+            doubleBuffer[pin * blockSize + tx] = doubleBuffer[pout * blockSize + tx];
             __syncthreads();
 
             for (int offset = 1; offset < blockSize; offset *= 2)
@@ -154,37 +158,38 @@ namespace StreamCompaction {
 
                 if (tx >= offset)
                 {
-                    temp[pout * blockSize + tx] = temp[pin * blockSize + tx - offset] + temp[pin * blockSize + tx];
+                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx - offset] + doubleBuffer[pin * blockSize + tx];
                 }
                 else
                 {
-                    temp[pout * blockSize + tx] = temp[pin * blockSize + tx];
+                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx];
                 }
                 __syncthreads();
             }
 
-            if (g_index < n)
-            {
-                // write output
-                odata[g_index] = temp[pout * blockSize + tx];
-            }
+            // write output
+            odata[g_index] = doubleBuffer[pout * blockSize + tx];
         }
 
         __global__ void kernelNaiveInclusivePrefixSumByBlock(const int n, const int* idata, int* odata)
         {
-            // allocated on invocation
-            extern __shared__ int temp[];
-
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
-            int tx = threadIdx.x;
 
-            int* integerData = temp;
+            if (g_index >= n)
+            {
+                return;
+            }
+
+            // allocated on invocation
+            extern __shared__ int doubleBuffer[];
+
+            int tx = threadIdx.x;
 
             int pout = 0, pin = 1;
 
             // Load input into shared memory.
-            temp[pout * blockSize + tx] = (g_index < n) ? idata[g_index] : 0;
-            temp[pin * blockSize + tx] = temp[pout * blockSize + tx];
+            doubleBuffer[pout * blockSize + tx] = idata[g_index];
+            doubleBuffer[pin * blockSize + tx] = doubleBuffer[pout * blockSize + tx];
             __syncthreads();
 
             for (int offset = 1; offset < blockSize; offset *= 2)
@@ -195,20 +200,17 @@ namespace StreamCompaction {
 
                 if (tx >= offset)
                 {
-                    temp[pout * blockSize + tx] = temp[pin * blockSize + tx - offset] + temp[pin * blockSize + tx];
+                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx - offset] + doubleBuffer[pin * blockSize + tx];
                 }
                 else
                 {
-                    temp[pout * blockSize + tx] = temp[pin * blockSize + tx];
+                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx];
                 }
                 __syncthreads();
             }
 
-            if (g_index < n)
-            {
-                // write output
-                odata[g_index] = temp[pout * blockSize + tx];
-            }
+            // write output
+            odata[g_index] = doubleBuffer[pout * blockSize + tx];
         }
 
         void exclusivePrefixSumSharedMemory(const int n, const int* idata, int* odata)

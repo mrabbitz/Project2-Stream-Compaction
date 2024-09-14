@@ -6,7 +6,7 @@ namespace StreamCompaction {
     namespace Naive {
         StreamCompaction::Common::PerformanceTimer& timer();
 
-        __global__ void kernelNaiveInclusivePrefixSumIteration(const int n, const int lowerBound, const int* idata, int* odata);
+        __global__ void kernelNaiveInclusivePrefixSumIteration(const int n, const int offset, const int* idata, int* odata);
 
         __global__ void kernelInclusiveToExclusivePrefixSum(const int n, const int* idata, int* odata);
 
