@@ -62,8 +62,6 @@ namespace StreamCompaction {
             #endif
         }
 
-
-
         void exclusivePrefixSum(const int n, const int* idata, int* odata)
         {
             int* dev_bufferA;
