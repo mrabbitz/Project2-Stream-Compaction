@@ -81,6 +81,7 @@ namespace StreamCompaction {
             dim3 blocksPerGrid((n + blockSize - 1) / blockSize);
 
             timer().startGpuTimer();
+
             
             for (int lowerBound = 1; lowerBound < n; lowerBound *= 2)
             {
@@ -96,6 +97,7 @@ namespace StreamCompaction {
 
             cudaMemcpy(odata, dev_bufferB, sizeof(int) * n, cudaMemcpyDeviceToHost);
             checkCUDAError("memcpy dev_bufferB to odata failed!");
+
 
             timer().endGpuTimer();
 
@@ -221,9 +223,11 @@ namespace StreamCompaction {
 
             const int sharedMemoryBytes = 2 * blockSize * sizeof(int);
 
+            int numBlocks = (n + blockSize - 1) / blockSize;
+
             timer().startGpuTimer();
 
-            int numBlocks = (n + blockSize - 1) / blockSize;
+
             naiveInclusivePrefixSumAnyNumberOfBlocks(sharedMemoryBytes, n, numBlocks, dev_bufferA, dev_bufferB);
 
             kernelInclusiveToExclusivePrefixSum<<<(n + blockSize - 1) / blockSize, blockSize>>>(n, dev_bufferB, dev_bufferA);
