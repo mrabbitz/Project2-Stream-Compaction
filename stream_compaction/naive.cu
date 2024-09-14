@@ -14,24 +14,6 @@ namespace StreamCompaction {
             return timer;
         }
 
-        __global__ void kernelNaiveInclusivePrefixSumIteration(const int n, const int offset, const int* idata, int* odata)
-        {
-            int g_index = (blockIdx.x * blockDim.x) + threadIdx.x;
-            if (g_index >= n)
-            {
-                return;
-            }
-
-            if (g_index >= offset)
-            {
-                odata[g_index] = idata[g_index - offset] + idata[g_index];
-            }
-            else
-            {
-                odata[g_index] = idata[g_index];
-            }
-        }
-
         __global__ void kernelInclusiveToExclusivePrefixSum(const int n, const int* idata, int* odata)
         {
             int g_index = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -50,60 +32,25 @@ namespace StreamCompaction {
             }
         }
 
-        /**
-         * Performs prefix-sum (aka scan) on idata, storing the result into odata.
-         */
-        void scan(int n, int* odata, const int* idata)
+        __global__ void kernelNaiveInclusivePrefixSumPass(const int n, const int offset, const int* idata, int* odata)
         {
-            #if SHARED_MEMORY
-            exclusivePrefixSumSharedMemory(n, idata, odata);
-            #else
-            exclusivePrefixSum(n, idata, odata);
-            #endif
-        }
-
-        void exclusivePrefixSum(const int n, const int* idata, int* odata)
-        {
-            int* dev_bufferA;
-            int* dev_bufferB;
-
-            cudaMalloc((void**)&dev_bufferA, sizeof(int) * n);
-            checkCUDAError("cudaMalloc dev_bufferA failed!");
-
-            cudaMalloc((void**)&dev_bufferB, sizeof(int) * n);
-            checkCUDAError("cudaMalloc dev_bufferB failed!");
-
-            cudaMemcpy(dev_bufferA, idata, sizeof(int) * n, cudaMemcpyHostToDevice);
-            checkCUDAError("memcpy idata to dev_bufferA failed!");
-
-            dim3 blocksPerGrid((n + blockSize - 1) / blockSize);
-
-            timer().startGpuTimer();
-
-            
-            for (int offset = 1; offset < n; offset *= 2)
+            int g_index = (blockIdx.x * blockDim.x) + threadIdx.x;
+            if (g_index >= n)
             {
-                kernelNaiveInclusivePrefixSumIteration<<<blocksPerGrid, blockSize>>>(n, offset, dev_bufferA, dev_bufferB);
-                checkCUDAError("kernelNaiveInclusivePrefixSumIteration failed!");
-
-                // set the input of the next iteration to the output of this iteration
-                std::swap(dev_bufferA, dev_bufferB);
+                return;
             }
 
-            kernelInclusiveToExclusivePrefixSum<<<blocksPerGrid, blockSize>>>(n, dev_bufferA, dev_bufferB);
-            checkCUDAError("kernelInclusiveToExclusivePrefixSum failed!");
-
-            cudaMemcpy(odata, dev_bufferB, sizeof(int) * n, cudaMemcpyDeviceToHost);
-            checkCUDAError("memcpy dev_bufferB to odata failed!");
-
-
-            timer().endGpuTimer();
-
-            cudaFree(dev_bufferA);
-            cudaFree(dev_bufferB);
+            if (g_index >= offset)
+            {
+                odata[g_index] = idata[g_index - offset] + idata[g_index];
+            }
+            else
+            {
+                odata[g_index] = idata[g_index];
+            }
         }
 
-        __global__ void kernelAddBlockIncrements(const int n, const int* idataBlockSums, const int* idata, int* odata)
+        __global__ void kernelNaiveInclusivePrefixSumByBlock(const int n, const int* idata, int* odata)
         {
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -112,19 +59,37 @@ namespace StreamCompaction {
                 return;
             }
 
-            odata[g_index] = idata[g_index] + idataBlockSums[blockIdx.x];
-        }
+            // allocated on invocation
+            extern __shared__ int doubleBuffer[];
 
-        __global__ void kernelExtractBlockSums(const int n, const int numBlocks, const int* idata, int* odata)
-        {
-            int g_index = blockIdx.x * blockDim.x + threadIdx.x;
+            int tx = threadIdx.x;
 
-            if (g_index >= numBlocks)
+            int pout = 0, pin = 1;
+
+            // Load input into shared memory.
+            doubleBuffer[pout * blockSize + tx] = idata[g_index];
+            doubleBuffer[pin * blockSize + tx] = doubleBuffer[pout * blockSize + tx];
+            __syncthreads();
+
+            for (int offset = 1; offset < blockSize; offset *= 2)
             {
-                return;
+                // swap double buffer indices
+                pout = 1 - pout;
+                pin = 1 - pout;
+
+                if (tx >= offset)
+                {
+                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx - offset] + doubleBuffer[pin * blockSize + tx];
+                }
+                else
+                {
+                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx];
+                }
+                __syncthreads();
             }
 
-            odata[g_index] = g_index == numBlocks - 1 ? idata[n - 1] : idata[(g_index * blockSize) + blockSize - 1];
+            // write output
+            odata[g_index] = doubleBuffer[pout * blockSize + tx];
         }
 
         __global__ void kernelNaiveExclusivePrefixSumByBlock(const int n, const int* idata, int* odata)
@@ -171,7 +136,19 @@ namespace StreamCompaction {
             odata[g_index] = doubleBuffer[pout * blockSize + tx];
         }
 
-        __global__ void kernelNaiveInclusivePrefixSumByBlock(const int n, const int* idata, int* odata)
+        __global__ void kernelExtractBlockSums(const int n, const int numBlocks, const int* idata, int* odata)
+        {
+            int g_index = blockIdx.x * blockDim.x + threadIdx.x;
+
+            if (g_index >= numBlocks)
+            {
+                return;
+            }
+
+            odata[g_index] = g_index == numBlocks - 1 ? idata[n - 1] : idata[(g_index * blockSize) + blockSize - 1];
+        }
+
+        __global__ void kernelAddBlockIncrements(const int n, const int* idataBlockSums, const int* idata, int* odata)
         {
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -180,40 +157,63 @@ namespace StreamCompaction {
                 return;
             }
 
-            // allocated on invocation
-            extern __shared__ int doubleBuffer[];
-
-            int tx = threadIdx.x;
-
-            int pout = 0, pin = 1;
-
-            // Load input into shared memory.
-            doubleBuffer[pout * blockSize + tx] = idata[g_index];
-            doubleBuffer[pin * blockSize + tx] = doubleBuffer[pout * blockSize + tx];
-            __syncthreads();
-
-            for (int offset = 1; offset < blockSize; offset *= 2)
-            {
-                // swap double buffer indices
-                pout = 1 - pout;
-                pin = 1 - pout;
-
-                if (tx >= offset)
-                {
-                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx - offset] + doubleBuffer[pin * blockSize + tx];
-                }
-                else
-                {
-                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx];
-                }
-                __syncthreads();
-            }
-
-            // write output
-            odata[g_index] = doubleBuffer[pout * blockSize + tx];
+            odata[g_index] = idata[g_index] + idataBlockSums[blockIdx.x];
         }
 
-        void exclusivePrefixSumSharedMemory(const int n, const int* idata, int* odata)
+        /**
+         * Performs prefix-sum (aka scan) on idata, storing the result into odata.
+         */
+        void scan(int n, int* odata, const int* idata)
+        {
+            #if SHARED_MEMORY
+            naiveExclusivePrefixSumSharedMemory(n, idata, odata);
+            #else
+            naiveExclusivePrefixSum(n, idata, odata);
+            #endif
+        }
+
+        void naiveExclusivePrefixSum(const int n, const int* idata, int* odata)
+        {
+            int* dev_bufferA;
+            int* dev_bufferB;
+
+            cudaMalloc((void**)&dev_bufferA, sizeof(int) * n);
+            checkCUDAError("cudaMalloc dev_bufferA failed!");
+
+            cudaMalloc((void**)&dev_bufferB, sizeof(int) * n);
+            checkCUDAError("cudaMalloc dev_bufferB failed!");
+
+            cudaMemcpy(dev_bufferA, idata, sizeof(int) * n, cudaMemcpyHostToDevice);
+            checkCUDAError("memcpy idata to dev_bufferA failed!");
+
+            dim3 blocksPerGrid((n + blockSize - 1) / blockSize);
+
+            timer().startGpuTimer();
+
+            
+            for (int offset = 1; offset < n; offset *= 2)
+            {
+                kernelNaiveInclusivePrefixSumPass<<<blocksPerGrid, blockSize>>>(n, offset, dev_bufferA, dev_bufferB);
+                checkCUDAError("kernelNaiveInclusivePrefixSumPass failed!");
+
+                // set the input of the next iteration to the output of this iteration
+                std::swap(dev_bufferA, dev_bufferB);
+            }
+
+            kernelInclusiveToExclusivePrefixSum<<<blocksPerGrid, blockSize>>>(n, dev_bufferA, dev_bufferB);
+            checkCUDAError("kernelInclusiveToExclusivePrefixSum failed!");
+
+            cudaMemcpy(odata, dev_bufferB, sizeof(int) * n, cudaMemcpyDeviceToHost);
+            checkCUDAError("memcpy dev_bufferB to odata failed!");
+
+
+            timer().endGpuTimer();
+
+            cudaFree(dev_bufferA);
+            cudaFree(dev_bufferB);
+        }
+
+        void naiveExclusivePrefixSumSharedMemory(const int n, const int* idata, int* odata)
         {
             int* dev_bufferA;
             int* dev_bufferB;
