@@ -2,6 +2,7 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 #include <cstdio>
 #include <cstring>
@@ -9,6 +10,8 @@
 #include <algorithm>
 #include <chrono>
 #include <stdexcept>
+
+#define blockSize 32
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
