@@ -3,8 +3,6 @@
 #include "common.h"
 #include "naive.h"
 
-#define SHARED_MEMORY 1
-
 namespace StreamCompaction {
     namespace Naive {
         using StreamCompaction::Common::PerformanceTimer;
@@ -163,13 +161,16 @@ namespace StreamCompaction {
         /**
          * Performs prefix-sum (aka scan) on idata, storing the result into odata.
          */
-        void scan(int n, int* odata, const int* idata)
+        void scan(int n, int* odata, const int* idata, bool useSharedMemory)
         {
-            #if SHARED_MEMORY
-            naiveExclusivePrefixSumSharedMemory(n, idata, odata);
-            #else
-            naiveExclusivePrefixSum(n, idata, odata);
-            #endif
+            if (useSharedMemory)
+            {
+                naiveExclusivePrefixSumSharedMemory(n, idata, odata);
+            }
+            else
+            {
+                naiveExclusivePrefixSum(n, idata, odata);
+            }
         }
 
         void naiveExclusivePrefixSum(const int n, const int* idata, int* odata)

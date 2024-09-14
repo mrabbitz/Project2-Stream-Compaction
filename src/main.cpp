@@ -48,8 +48,8 @@ int main(int argc, char* argv[]) {
     printCmpResult(NPOT, b, c);
 
     zeroArray(SIZE, c);
-    printDesc("naive scan, power-of-two");
-    StreamCompaction::Naive::scan(SIZE, c, a);
+    printDesc("naive scan, power-of-two, no shared memory");
+    StreamCompaction::Naive::scan(SIZE, c, a, false);
     printElapsedTime(StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
     //printArray(SIZE, c, true);
     printCmpResult(SIZE, b, c);
@@ -61,8 +61,22 @@ int main(int argc, char* argv[]) {
     printArray(SIZE, c, true); */
 
     zeroArray(SIZE, c);
-    printDesc("naive scan, non-power-of-two");
-    StreamCompaction::Naive::scan(NPOT, c, a);
+    printDesc("naive scan, non-power-of-two, no shared memory");
+    StreamCompaction::Naive::scan(NPOT, c, a, false);
+    printElapsedTime(StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
+    //printArray(SIZE, c, true);
+    printCmpResult(NPOT, b, c);
+
+    zeroArray(SIZE, c);
+    printDesc("naive scan, power-of-two, shared memory");
+    StreamCompaction::Naive::scan(SIZE, c, a, true);
+    printElapsedTime(StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
+    //printArray(SIZE, c, true);
+    printCmpResult(SIZE, b, c);
+
+    zeroArray(SIZE, c);
+    printDesc("naive scan, non-power-of-two, shared memory");
+    StreamCompaction::Naive::scan(NPOT, c, a, true);
     printElapsedTime(StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
     //printArray(SIZE, c, true);
     printCmpResult(NPOT, b, c);

@@ -18,7 +18,7 @@ namespace StreamCompaction {
 
         __global__ void kernelAddBlockIncrements(const int n, const int* idataBlockSums, const int* idata, int* odata);
 
-        void scan(int n, int* odata, const int* idata);
+        void scan(int n, int* odata, const int* idata, bool useSharedMemory);
 
         void naiveExclusivePrefixSum(const int n, const int* idata, int* odata);
 
