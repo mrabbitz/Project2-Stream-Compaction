@@ -129,7 +129,8 @@ namespace StreamCompaction {
 
         __global__ void kernelNaiveExclusivePrefixSumByBlock(const int n, const int* idata, int* odata)
         {
-            extern __shared__ int temp[]; // allocated on invocation
+            // allocated on invocation
+            extern __shared__ int temp[];
 
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
             int tx = threadIdx.x;
@@ -137,6 +138,7 @@ namespace StreamCompaction {
             int* integerData = temp;
 
             int pout = 0, pin = 1;
+
             // Load input into shared memory.
             // This is exclusive scan, so shift right by one
             // and set first element to 0
@@ -146,7 +148,8 @@ namespace StreamCompaction {
 
             for (int offset = 1; offset < blockSize; offset *= 2)
             {
-                pout = 1 - pout; // swap double buffer indices
+                // swap double buffer indices
+                pout = 1 - pout;
                 pin = 1 - pout;
 
                 if (tx >= offset)
@@ -162,13 +165,15 @@ namespace StreamCompaction {
 
             if (g_index < n)
             {
-                odata[g_index] = temp[pout * blockSize + tx]; // write output
+                // write output
+                odata[g_index] = temp[pout * blockSize + tx];
             }
         }
 
         __global__ void kernelNaiveInclusivePrefixSumByBlock(const int n, const int* idata, int* odata)
         {
-            extern __shared__ int temp[]; // allocated on invocation
+            // allocated on invocation
+            extern __shared__ int temp[];
 
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
             int tx = threadIdx.x;
@@ -176,16 +181,16 @@ namespace StreamCompaction {
             int* integerData = temp;
 
             int pout = 0, pin = 1;
+
             // Load input into shared memory.
-
-
             temp[pout * blockSize + tx] = (g_index < n) ? idata[g_index] : 0;
             temp[pin * blockSize + tx] = temp[pout * blockSize + tx];
             __syncthreads();
 
             for (int offset = 1; offset < blockSize; offset *= 2)
             {
-                pout = 1 - pout; // swap double buffer indices
+                // swap double buffer indices
+                pout = 1 - pout;
                 pin = 1 - pout;
 
                 if (tx >= offset)
@@ -201,7 +206,8 @@ namespace StreamCompaction {
 
             if (g_index < n)
             {
-                odata[g_index] = temp[pout * blockSize + tx]; // write output
+                // write output
+                odata[g_index] = temp[pout * blockSize + tx];
             }
         }
 
