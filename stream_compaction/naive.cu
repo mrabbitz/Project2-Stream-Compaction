@@ -281,6 +281,7 @@ namespace StreamCompaction {
                 }
 
                 cudaMemcpy(odata, idata, sizeof(int) * n, cudaMemcpyDeviceToDevice);
+                checkCUDAError("memcpy idata to odata failed!");
 
                 cudaFree(dev_bufferBlockSumsA);
                 cudaFree(dev_bufferBlockSumsB);
