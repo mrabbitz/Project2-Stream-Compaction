@@ -97,6 +97,13 @@ namespace StreamCompaction {
                 }
             }
 
+            // handle case where last element of binary map is a "hit" AKA == 1
+            // the exclusive prefixSumResult doesnt capture this edge case
+            if (binaryMap[n - 1] == 1)
+            {
+                odata[compactedCount++] = idata[n - 1];
+            }
+
             timer().endCpuTimer();
 
             delete[] binaryMap;
