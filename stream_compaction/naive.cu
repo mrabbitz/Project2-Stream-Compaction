@@ -249,6 +249,8 @@ namespace StreamCompaction {
             cudaFree(dev_bufferB);
         }
 
+        // iterative approach is possible if the blockSums buffers are allocated carefully ahead of time, combined with clever indexing of them at each iteration
+        // for the sake of submitting this assignement on time, this will have to be explored at a later time
         void naiveInclusivePrefixSumAnyNumberOfBlocks(const int sharedMemoryBytes, const int n, const int numBlocks, int* idata, int* odata)
         {
             kernelNaiveInclusivePrefixSumByBlock<<<numBlocks, blockSize, sharedMemoryBytes>>>(n, idata, odata);
