@@ -6,8 +6,14 @@ namespace StreamCompaction {
     namespace Efficient {
         StreamCompaction::Common::PerformanceTimer& timer();
 
-        void scan(int n, int *odata, const int *idata);
+        __global__ void kernelReductionPass(const int bufferLength, const int offset, int* data);
 
-        int compact(int n, int *odata, const int *idata);
+        __global__ void kernelDownSweepPass(const int bufferLength, const int offset, int* data);
+
+        void scan(int n, int* odata, const int* idata);
+
+        void efficientExclusivePrefixSum(const int n, const int* idata, int* odata);
+
+        int compact(int n, int* odata, const int* idata);
     }
 }
