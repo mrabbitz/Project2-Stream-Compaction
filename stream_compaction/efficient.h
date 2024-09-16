@@ -10,10 +10,18 @@ namespace StreamCompaction {
 
         __global__ void kernelDownSweepPass(const int bufferLength, const int offset, int* data);
 
-        void scan(int n, int* odata, const int* idata);
+        __global__ void kernelEfficientExclusivePrefixSumByBlock(const int n, int* data, int* sums);
 
-        void efficientExclusivePrefixSum(const int n, const int* idata, int* odata);
+        __global__ void kernelAddBlockSumsToBlockData(const int n, const int* idataBlockSums, int* data);
 
-        int compact(int n, int* odata, const int* idata);
+        void scan(int n, int* odata, const int* idata, bool useSharedMemory);
+
+        void efficientExclusivePrefixSum(const bool useGpuTimer, const int n, const int* idata, int* odata);
+
+        void efficientExclusivePrefixSumSharedMemory(const bool useGpuTimer, const int n, const int* idata, int* odata);
+
+        void efficientExclusivePrefixSumAnyNumberOfBlocks(const int sharedMemoryBytes, const int n, const int numBlocks, int* data, int* sums);
+
+        int compact(int n, int* odata, const int* idata, bool useSharedMemory);
     }
 }
