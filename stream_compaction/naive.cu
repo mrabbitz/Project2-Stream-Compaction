@@ -62,14 +62,14 @@ namespace StreamCompaction {
 
             int tx = threadIdx.x;
 
-            // identify which half of double buffer is read-half and write-half
-            int writeBuffer = 0;
-            int readBuffer = 1;
-
             // Load input into shared memory
             // Only need to write to the first half since our first write will be to the second half
             shared[tx] = idata[g_index];
             __syncthreads();
+
+            // identify which half of double buffer is read-half and write-half
+            int writeBuffer = 0;
+            int readBuffer = 1;
 
             for (int offset = 1; offset < blockSize; offset *= 2)
             {
@@ -106,15 +106,15 @@ namespace StreamCompaction {
 
             int tx = threadIdx.x;
 
-            // identify which half of double buffer is read-half and write-half
-            int writeBuffer = 0;
-            int readBuffer = 1;
-
             // Load input into shared memory
             // Exclusive scan - shift all elements right by one and set first element to 0
             // Only need to write to the first half since our first write will be to the second half
             shared[tx] = (tx > 0) ? idata[g_index - 1] : 0;
             __syncthreads();
+
+            // identify which half of double buffer is read-half and write-half
+            int writeBuffer = 0;
+            int readBuffer = 1;
 
             for (int offset = 1; offset < blockSize; offset *= 2)
             {

@@ -77,7 +77,7 @@ namespace StreamCompaction {
             __syncthreads();
 
             // Downsweep phase
-            for (int offset = blockSize / 2; offset > 0; offset /= 2)
+            for (int offset = blockSize >> 1; offset > 0; offset >>= 1)
             {
                 if ((tx + 1) % (2 * offset) == 0)
                 {
@@ -154,7 +154,7 @@ namespace StreamCompaction {
             cudaMemset(dev_data + bufferLength - 1, 0, sizeof(int));
             checkCUDAError("cudaMemset last element in dev_data to 0 failed!");
 
-            for (int offset = bufferLength / 2; offset > 0; offset /= 2)
+            for (int offset = bufferLength >> 1; offset > 0; offset >>= 1)
             {
                 kernelDownSweepPass<<<blocksPerGrid, blockSize>>>(bufferLength, offset, dev_data);
                 checkCUDAError("kernelDownSweepPass failed!");
