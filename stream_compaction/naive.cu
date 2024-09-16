@@ -211,6 +211,7 @@ namespace StreamCompaction {
 
             cudaFree(dev_bufferA);
             cudaFree(dev_bufferB);
+            checkCUDAError("cudaFree failed!");
         }
 
         void naiveExclusivePrefixSumSharedMemory(const int n, const int* idata, int* odata)
@@ -247,6 +248,7 @@ namespace StreamCompaction {
 
             cudaFree(dev_bufferA);
             cudaFree(dev_bufferB);
+            checkCUDAError("cudaFree failed!");
         }
 
         // iterative approach is possible if the blockSums buffers are allocated carefully ahead of time, combined with clever indexing of them at each iteration
@@ -293,6 +295,7 @@ namespace StreamCompaction {
 
                 cudaFree(dev_bufferBlockSumsA);
                 cudaFree(dev_bufferBlockSumsB);
+                checkCUDAError("cudaFree failed!");
             }
         }
     }
