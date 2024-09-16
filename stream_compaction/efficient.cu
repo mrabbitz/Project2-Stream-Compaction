@@ -68,7 +68,7 @@ namespace StreamCompaction {
                 __syncthreads();
             }
 
-            // Clear the last element
+            // Write the block sum and then clear it for the Downsweep
             if (tx == blockSize - 1)
             {
                 sums[blockIdx.x] = shared[tx];
@@ -267,6 +267,7 @@ namespace StreamCompaction {
 
 
             Common::kernMapToBoolean<<<blocksPerGrid, blockSize>>>(n, dev_binaryMap, dev_idata);
+            checkCUDAError("kernMapToBoolean failed!");
 
             if (useSharedMemory)
             {
@@ -278,21 +279,22 @@ namespace StreamCompaction {
             }
 
             Common::kernScatter<<<blocksPerGrid, blockSize>>>(n, dev_odata, dev_idata, dev_binaryMap, dev_exclusivePrefixSumResult);
+            checkCUDAError("kernScatter failed!");
 
 
             timer().endGpuTimer();
 
-            cudaMemcpy(odata, dev_odata, sizeof(int) * n, cudaMemcpyDeviceToHost);
-            checkCUDAError("memcpy dev_bufferB to odata failed!");
-
             int compactedCount;
             cudaMemcpy(&compactedCount, dev_exclusivePrefixSumResult + (n - 1), sizeof(int), cudaMemcpyDeviceToHost);
-            checkCUDAError("cudaMemcpy dev_exclusivePrefixSumResult to compactedCount failed!");
+            checkCUDAError("cudaMemcpy dev_exclusivePrefixSumResult last element to compactedCount failed!");
 
             if (idata[n - 1] != 0)
             {
                 ++compactedCount;
             }
+
+            cudaMemcpy(odata, dev_odata, sizeof(int) * compactedCount, cudaMemcpyDeviceToHost);
+            checkCUDAError("memcpy dev_odata to odata failed!");
 
             cudaFree(dev_idata);
             cudaFree(dev_odata);

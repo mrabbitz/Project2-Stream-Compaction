@@ -51,7 +51,8 @@ namespace StreamCompaction {
         __global__ void kernelNaiveInclusivePrefixSumByBlock(const int n, const int* idata, int* odata)
         {
             // allocated on invocation
-            extern __shared__ int doubleBuffer[];
+            // double buffer for ping-ponging
+            extern __shared__ int shared[];
 
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
             if (g_index >= n)
@@ -67,7 +68,7 @@ namespace StreamCompaction {
 
             // Load input into shared memory
             // Only need to write to the first half since our first write will be to the second half
-            doubleBuffer[tx] = idata[g_index];
+            shared[tx] = idata[g_index];
             __syncthreads();
 
             for (int offset = 1; offset < blockSize; offset *= 2)
@@ -78,23 +79,24 @@ namespace StreamCompaction {
 
                 if (tx >= offset)
                 {
-                    doubleBuffer[writeBuffer * blockSize + tx] = doubleBuffer[readBuffer * blockSize + tx - offset] + doubleBuffer[readBuffer * blockSize + tx];
+                    shared[writeBuffer * blockSize + tx] = shared[readBuffer * blockSize + tx - offset] + shared[readBuffer * blockSize + tx];
                 }
                 else
                 {
-                    doubleBuffer[writeBuffer * blockSize + tx] = doubleBuffer[readBuffer * blockSize + tx];
+                    shared[writeBuffer * blockSize + tx] = shared[readBuffer * blockSize + tx];
                 }
                 __syncthreads();
             }
 
             // write output
-            odata[g_index] = doubleBuffer[writeBuffer * blockSize + tx];
+            odata[g_index] = shared[writeBuffer * blockSize + tx];
         }
 
         __global__ void kernelNaiveExclusivePrefixSumByBlock(const int n, const int* idata, int* odata)
         {
             // allocated on invocation
-            extern __shared__ int doubleBuffer[];
+            // double buffer for ping-ponging
+            extern __shared__ int shared[];
 
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
             if (g_index >= n)
@@ -111,7 +113,7 @@ namespace StreamCompaction {
             // Load input into shared memory
             // Exclusive scan - shift all elements right by one and set first element to 0
             // Only need to write to the first half since our first write will be to the second half
-            doubleBuffer[tx] = (tx > 0) ? idata[g_index - 1] : 0;
+            shared[tx] = (tx > 0) ? idata[g_index - 1] : 0;
             __syncthreads();
 
             for (int offset = 1; offset < blockSize; offset *= 2)
@@ -122,17 +124,17 @@ namespace StreamCompaction {
 
                 if (tx >= offset)
                 {
-                    doubleBuffer[writeBuffer * blockSize + tx] = doubleBuffer[readBuffer * blockSize + tx - offset] + doubleBuffer[readBuffer * blockSize + tx];
+                    shared[writeBuffer * blockSize + tx] = shared[readBuffer * blockSize + tx - offset] + shared[readBuffer * blockSize + tx];
                 }
                 else
                 {
-                    doubleBuffer[writeBuffer * blockSize + tx] = doubleBuffer[readBuffer * blockSize + tx];
+                    shared[writeBuffer * blockSize + tx] = shared[readBuffer * blockSize + tx];
                 }
                 __syncthreads();
             }
 
             // write output
-            odata[g_index] = doubleBuffer[writeBuffer * blockSize + tx];
+            odata[g_index] = shared[writeBuffer * blockSize + tx];
         }
 
         __global__ void kernelExtractBlockSums(const int n, const int numBlocks, const int* idata, int* odata)
