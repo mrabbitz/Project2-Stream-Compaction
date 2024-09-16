@@ -167,6 +167,7 @@ namespace StreamCompaction {
             checkCUDAError("memcpy dev_data to odata failed!");
 
             cudaFree(dev_data);
+            checkCUDAError("cudaFree failed!");
         }
 
         void efficientExclusivePrefixSumSharedMemory(const bool useGpuTimer, const int n, const int* idata, int* odata)
@@ -200,6 +201,7 @@ namespace StreamCompaction {
 
             cudaFree(dev_data);
             cudaFree(dev_sums);
+            checkCUDAError("cudaFree failed!");
         }
 
         // iterative approach is possible
@@ -224,6 +226,7 @@ namespace StreamCompaction {
                 checkCUDAError("kernelAddBlockSumsToBlockData failed!");
 
                 cudaFree(dev_sums);
+                checkCUDAError("cudaFree failed!");
             }
         }
 
@@ -295,6 +298,7 @@ namespace StreamCompaction {
             cudaFree(dev_odata);
             cudaFree(dev_binaryMap);
             cudaFree(dev_exclusivePrefixSumResult);
+            checkCUDAError("cudaFree failed!");
 
             return compactedCount;
         }
