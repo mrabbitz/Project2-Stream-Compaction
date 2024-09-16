@@ -89,19 +89,13 @@ namespace StreamCompaction {
             // scatter
             int compactedCount = 0;
 
-            for (int i = 0; i < n - 1; ++i)
+            for (int i = 0; i < n; ++i)
             {
-                if (exclusivePrefixSumResult[i] != exclusivePrefixSumResult[i + 1])
+                if (binaryMap[i] == 1)
                 {
-                    odata[compactedCount++] = idata[i];
+                    odata[exclusivePrefixSumResult[i]] = idata[i];
+                    ++compactedCount;
                 }
-            }
-
-            // handle case where last element of binary map is a "hit" AKA == 1
-            // the exclusive prefixSumResult doesnt capture this edge case
-            if (binaryMap[n - 1] == 1)
-            {
-                odata[compactedCount++] = idata[n - 1];
             }
 
             timer().endCpuTimer();

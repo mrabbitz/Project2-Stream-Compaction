@@ -50,94 +50,94 @@ namespace StreamCompaction {
 
         __global__ void kernelNaiveInclusivePrefixSumByBlock(const int n, const int* idata, int* odata)
         {
-            int g_index = blockIdx.x * blockDim.x + threadIdx.x;
+            // allocated on invocation
+            extern __shared__ int doubleBuffer[];
 
+            int g_index = blockIdx.x * blockDim.x + threadIdx.x;
             if (g_index >= n)
             {
                 return;
             }
 
-            // allocated on invocation
-            extern __shared__ int doubleBuffer[];
-
             int tx = threadIdx.x;
 
-            int pout = 0, pin = 1;
+            // identify which half of double buffer is read-half and write-half
+            int writeBuffer = 0;
+            int readBuffer = 1;
 
-            // Load input into shared memory.
-            doubleBuffer[pout * blockSize + tx] = idata[g_index];
-            doubleBuffer[pin * blockSize + tx] = doubleBuffer[pout * blockSize + tx];
+            // Load input into shared memory
+            // Only need to write to the first half since our first write will be to the second half
+            doubleBuffer[tx] = idata[g_index];
             __syncthreads();
 
             for (int offset = 1; offset < blockSize; offset *= 2)
             {
                 // swap double buffer indices
-                pout = 1 - pout;
-                pin = 1 - pout;
+                writeBuffer = 1 - writeBuffer;
+                readBuffer = 1 - writeBuffer;
 
                 if (tx >= offset)
                 {
-                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx - offset] + doubleBuffer[pin * blockSize + tx];
+                    doubleBuffer[writeBuffer * blockSize + tx] = doubleBuffer[readBuffer * blockSize + tx - offset] + doubleBuffer[readBuffer * blockSize + tx];
                 }
                 else
                 {
-                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx];
+                    doubleBuffer[writeBuffer * blockSize + tx] = doubleBuffer[readBuffer * blockSize + tx];
                 }
                 __syncthreads();
             }
 
             // write output
-            odata[g_index] = doubleBuffer[pout * blockSize + tx];
+            odata[g_index] = doubleBuffer[writeBuffer * blockSize + tx];
         }
 
         __global__ void kernelNaiveExclusivePrefixSumByBlock(const int n, const int* idata, int* odata)
         {
-            int g_index = blockIdx.x * blockDim.x + threadIdx.x;
+            // allocated on invocation
+            extern __shared__ int doubleBuffer[];
 
+            int g_index = blockIdx.x * blockDim.x + threadIdx.x;
             if (g_index >= n)
             {
                 return;
             }
 
-            // allocated on invocation
-            extern __shared__ int doubleBuffer[];
-
             int tx = threadIdx.x;
 
-            int pout = 0, pin = 1;
+            // identify which half of double buffer is read-half and write-half
+            int writeBuffer = 0;
+            int readBuffer = 1;
 
-            // Load input into shared memory.
-            // This is exclusive scan, so shift right by one
-            // and set first element to 0
-            doubleBuffer[pout * blockSize + tx] = (tx > 0) ? idata[g_index - 1] : 0;
-            doubleBuffer[pin * blockSize + tx] = doubleBuffer[pout * blockSize + tx];
+            // Load input into shared memory
+            // Exclusive scan - shift all elements right by one and set first element to 0
+            // Only need to write to the first half since our first write will be to the second half
+            doubleBuffer[tx] = (tx > 0) ? idata[g_index - 1] : 0;
             __syncthreads();
 
             for (int offset = 1; offset < blockSize; offset *= 2)
             {
                 // swap double buffer indices
-                pout = 1 - pout;
-                pin = 1 - pout;
+                writeBuffer = 1 - writeBuffer;
+                readBuffer = 1 - writeBuffer;
 
                 if (tx >= offset)
                 {
-                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx - offset] + doubleBuffer[pin * blockSize + tx];
+                    doubleBuffer[writeBuffer * blockSize + tx] = doubleBuffer[readBuffer * blockSize + tx - offset] + doubleBuffer[readBuffer * blockSize + tx];
                 }
                 else
                 {
-                    doubleBuffer[pout * blockSize + tx] = doubleBuffer[pin * blockSize + tx];
+                    doubleBuffer[writeBuffer * blockSize + tx] = doubleBuffer[readBuffer * blockSize + tx];
                 }
                 __syncthreads();
             }
 
             // write output
-            odata[g_index] = doubleBuffer[pout * blockSize + tx];
+            odata[g_index] = doubleBuffer[writeBuffer * blockSize + tx];
         }
 
         __global__ void kernelExtractBlockSums(const int n, const int numBlocks, const int* idata, int* odata)
         {
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
-
             if (g_index >= numBlocks)
             {
                 return;
@@ -146,16 +146,15 @@ namespace StreamCompaction {
             odata[g_index] = g_index == numBlocks - 1 ? idata[n - 1] : idata[(g_index * blockSize) + blockSize - 1];
         }
 
-        __global__ void kernelAddBlockIncrements(const int n, const int* idataBlockSums, const int* idata, int* odata)
+        __global__ void kernelAddBlockSumsToBlockData(const int n, const int* idataBlockSums, int* data)
         {
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
-
             if (g_index >= n)
             {
                 return;
             }
 
-            odata[g_index] = idata[g_index] + idataBlockSums[blockIdx.x];
+            data[g_index] += idataBlockSums[blockIdx.x];
         }
 
         /**
@@ -187,7 +186,7 @@ namespace StreamCompaction {
             cudaMemcpy(dev_bufferA, idata, sizeof(int) * n, cudaMemcpyHostToDevice);
             checkCUDAError("memcpy idata to dev_bufferA failed!");
 
-            dim3 blocksPerGrid((n + blockSize - 1) / blockSize);
+            int blocksPerGrid = (n + blockSize - 1) / blockSize;
 
             timer().startGpuTimer();
 
@@ -204,11 +203,11 @@ namespace StreamCompaction {
             kernelInclusiveToExclusivePrefixSum<<<blocksPerGrid, blockSize>>>(n, dev_bufferA, dev_bufferB);
             checkCUDAError("kernelInclusiveToExclusivePrefixSum failed!");
 
-            cudaMemcpy(odata, dev_bufferB, sizeof(int) * n, cudaMemcpyDeviceToHost);
-            checkCUDAError("memcpy dev_bufferB to odata failed!");
-
 
             timer().endGpuTimer();
+
+            cudaMemcpy(odata, dev_bufferB, sizeof(int) * n, cudaMemcpyDeviceToHost);
+            checkCUDAError("memcpy dev_bufferB to odata failed!");
 
             cudaFree(dev_bufferA);
             cudaFree(dev_bufferB);
@@ -228,23 +227,23 @@ namespace StreamCompaction {
             cudaMemcpy(dev_bufferA, idata, sizeof(int) * n, cudaMemcpyHostToDevice);
             checkCUDAError("memcpy idata to dev_bufferA failed!");
 
-            const int sharedMemoryBytes = 2 * blockSize * sizeof(int);
+            int blocksPerGrid = (n + blockSize - 1) / blockSize;
 
-            int numBlocks = (n + blockSize - 1) / blockSize;
+            int sharedMemoryBytes = 2 * blockSize * sizeof(int);
 
             timer().startGpuTimer();
 
 
-            naiveInclusivePrefixSumAnyNumberOfBlocks(sharedMemoryBytes, n, numBlocks, dev_bufferA, dev_bufferB);
+            naiveInclusivePrefixSumAnyNumberOfBlocks(sharedMemoryBytes, n, blocksPerGrid, dev_bufferA, dev_bufferB);
 
-            kernelInclusiveToExclusivePrefixSum<<<(n + blockSize - 1) / blockSize, blockSize>>>(n, dev_bufferB, dev_bufferA);
+            kernelInclusiveToExclusivePrefixSum<<<blocksPerGrid, blockSize>>>(n, dev_bufferB, dev_bufferA);
             checkCUDAError("kernelInclusiveToExclusivePrefixSum failed!");
-
-            cudaMemcpy(odata, dev_bufferA, sizeof(int) * n, cudaMemcpyDeviceToHost);
-            checkCUDAError("memcpy dev_bufferA to odata failed!");
 
 
             timer().endGpuTimer();
+
+            cudaMemcpy(odata, dev_bufferA, sizeof(int) * n, cudaMemcpyDeviceToHost);
+            checkCUDAError("memcpy dev_bufferA to odata failed!");
 
             cudaFree(dev_bufferA);
             cudaFree(dev_bufferB);
@@ -269,6 +268,7 @@ namespace StreamCompaction {
                 checkCUDAError("cudaMalloc dev_bufferBlockSumsB failed!");
 
                 int numBlocksForBlockSums = (numBlocks + blockSize - 1) / blockSize;
+
                 kernelExtractBlockSums<<<numBlocksForBlockSums, blockSize>>>(n, numBlocks, odata, dev_bufferBlockSumsA);
                 checkCUDAError("kernelExtractBlockSums failed!");
 
@@ -279,20 +279,17 @@ namespace StreamCompaction {
                     kernelInclusiveToExclusivePrefixSum<<<numBlocksForBlockSums, blockSize>>>(numBlocks, dev_bufferBlockSumsB, dev_bufferBlockSumsA);
                     checkCUDAError("kernelInclusiveToExclusivePrefixSum failed!");
 
-                    kernelAddBlockIncrements<<<numBlocks, blockSize>>>(n, dev_bufferBlockSumsA, odata, idata);
-                    checkCUDAError("kernelAddBlockIncrements failed!");
+                    kernelAddBlockSumsToBlockData<<<numBlocks, blockSize>>>(n, dev_bufferBlockSumsA, odata);
+                    checkCUDAError("kernelAddBlockSumsToBlockData failed!");
                 }
                 else
                 {
                     kernelNaiveExclusivePrefixSumByBlock<<<numBlocksForBlockSums, blockSize, sharedMemoryBytes>>>(numBlocks, dev_bufferBlockSumsA, dev_bufferBlockSumsB);
                     checkCUDAError("kernelNaiveExclusivePrefixSumByBlock failed!");
 
-                    kernelAddBlockIncrements<<<numBlocks, blockSize>>>(n, dev_bufferBlockSumsB, odata, idata);
-                    checkCUDAError("kernelAddBlockIncrements failed!");
+                    kernelAddBlockSumsToBlockData<<<numBlocks, blockSize>>>(n, dev_bufferBlockSumsB, odata);
+                    checkCUDAError("kernelAddBlockSumsToBlockData failed!");
                 }
-
-                cudaMemcpy(odata, idata, sizeof(int) * n, cudaMemcpyDeviceToDevice);
-                checkCUDAError("memcpy idata to odata failed!");
 
                 cudaFree(dev_bufferBlockSumsA);
                 cudaFree(dev_bufferBlockSumsB);
