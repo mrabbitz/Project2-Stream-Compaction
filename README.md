@@ -32,8 +32,6 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 **All implementations support arrays of arbitrary n - small, large, powers of two, not powers of two**
 
 ### Scan
-
-
 1. **CPU:**  O(n) addition operations - sequential loop over array elements, accumulating a sum at each iteration
 2. **GPU Naive Algorithm:**  O(n * log<sub>2</sub>(n)) addition operations - over log<sub>2</sub>(n) passes, for pass p starting at p = 1, compute the partial sums of n - 2<sup>p - 1</sup> elements in parallel
 3. **GPU Work-Efficient Algorithm:**  O(n) operations - performs scan into two phases: parallel upsweep (reduction) with n - 1 adds (O(n)), and parallel downsweep with n - 1 adds (O(n)) and n - 1 swaps (O(n))
@@ -56,3 +54,12 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 <p align="left">
   <img src="img/gpu_excluisve_efficient_downsweep.PNG" />
 </p>
+
+### Stream Compaction
+**Compaction removes 0s from an array of randomized ints**
+
+1. **CPU without Scan:** - sequential loop over input array elements and copying valid array elements to the output array
+2. **CPU with Scan:** - **1) Create Binary Map:** sequential loop over the input array to create a binary array indicating the validity of each input element, **2) Scan:** sequential CPU scan on the binary array to generate a map of indices, where each index corresponds to the position of valid input data in the compacted output array, then **3) Scatter:** sequential loop over the binary array to place valid input data into the final output array, using the indices from the scan output to determine the correct positions.
+3. **GPU with Work-Efficient Scan:** - **1) Create Binary Map:** over n elements in one parallel pass, **2) Scan:** using Work-Efficient Scan, then **3) Scatter:** over n elements in one parallel pass
+4. **GPU with Work-Efficient and Hardware-Efficient Scan:** - same as above line except using Work-Efficient and Hardware-Efficient Scan
+5. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::remove_if
