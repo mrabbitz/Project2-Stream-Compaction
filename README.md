@@ -36,3 +36,13 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 4. **GPU Naive Algorithm with Hardware Efficiency:**  shared memory - divide the array into evenly-sized blocks, each of which is scanned by a single thread block. Utilize shared memory within each thread block to perform the scan and write the total sum of each block to a separate array of block sums. Then, scan the array of block sums to create an array of block increments, which are added to all elements within their respective blocks.
 5. **GPU Work-Efficient Algorithm with Hardware Efficiency:**  shared memory - same process as above
 6. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::exclusive_scan
+
+**GPU Naive Algorithm Inclusive Scan**
+![Naive Visual](img/gpu_inclusive_naive.PNG)
+
+**GPU Work-Efficient Algorithm Exclusive Scan**
+Upsweep:
+![Upsweep Visual](img/gpu_exclusive_efficient_upsweep.PNG)
+
+Downsweep:
+![Downsweep Visual](img/gpu_excluisve_efficient_downsweep.PNG)
