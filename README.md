@@ -41,18 +41,18 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 5. **GPU Work-Efficient Algorithm with Hardware Efficiency:**  shared memory - same process as above
 6. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::exclusive_scan
 
-#### Inclusive Scan - GPU Naive Algorithm
+#### Inclusive Scan - GPU Naive Algorithm:
 <p align="left">
   <img src="img/gpu_inclusive_naive.PNG" />
 </p>
 
-#### Exclusive Scan - GPU Work-Efficient Algorithm
-**Upsweep:**
+#### Exclusive Scan - GPU Work-Efficient Algorithm:
+**Upsweep**
 <p align="left">
   <img src="img/gpu_exclusive_efficient_upsweep.PNG" />
 </p>
 
-**Downsweep:**
+**Downsweep**
 <p align="left">
   <img src="img/gpu_excluisve_efficient_downsweep.PNG" />
 </p>
