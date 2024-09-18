@@ -38,6 +38,9 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 6. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::exclusive_scan
 
 **GPU Naive Algorithm Inclusive Scan**
+<p align="center">
+  <img src="img/gpu_inclusive_naive.PNG" />
+</p>
 ![Naive Visual](img/gpu_inclusive_naive.PNG)
 
 **GPU Work-Efficient Algorithm Exclusive Scan**
