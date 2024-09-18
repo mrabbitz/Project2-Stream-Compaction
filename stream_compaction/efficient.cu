@@ -56,7 +56,6 @@ namespace StreamCompaction {
         __global__ void kernelEfficientExclusivePrefixSumByBlock(const int reqThdsPerBlock, int* data, int* blockSums)
         {
             // allocated on invocation
-            // 2x block size
             extern __shared__ int shared[];
 
             int tx = threadIdx.x;
