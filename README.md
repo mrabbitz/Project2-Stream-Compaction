@@ -21,7 +21,7 @@ Stream compaction involves filtering an input data set to produce a new collecti
 ### Scan
 The Scan algorithm, also known as the all-prefix-sums operation, computes prefix sums for an array of data. In an exclusive scan, each element in the result is the sum of all preceding elements in the input array. Conversely, an inclusive scan includes the current element in the sum. Scan algorithms are fundamental in parallel computing for tasks like sorting, stream compaction, and building data structures, as they transform inherently sequential computations into parallel ones.
 
-<p align="center">
+<p align="left">
   <img src="img/scan_visual.PNG" />
 </p>
 
