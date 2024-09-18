@@ -76,4 +76,17 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 5. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::remove_if
 
 ## Part 3: Performance Analysis
+### Optimal Block Sizes
+**For each Scan**
+
+### Runtime
+**For each Scan of optimized Block Size**
+
+**Look at Thrust Implementation**
+
+### Performance Bottlenecks
+
+### Output
+
+
 
