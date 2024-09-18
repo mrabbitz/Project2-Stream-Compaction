@@ -7,7 +7,7 @@ CUDA Stream Compaction
   * [LinkedIn](https://www.linkedin.com/in/mike-rabbitz)
 * Tested on: Windows 10, i7-9750H @ 2.60GHz 32GB, RTX 2060 6GB (Personal)
 
-## Introduction
+## Part 1: Introduction
 
 This project focuses on implementing various Stream Compaction algorithms, including those utilizing the Scan algorithm, to emphasize the importance of designing GPU hardware-optimized algorithms that leverage parallel computation for superior performance compared to CPU implementations.
 
@@ -25,7 +25,7 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
   <img src="img/scan_visual.PNG" />
 </p>
 
-## Implementation Details
+## Part 2: Implementation Details
 
 **n represents the number of elements in the array**
 
@@ -74,3 +74,6 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 3. **GPU with Work-Efficient Scan:** - perform Step 1 over n elements in one parallel pass, perform Step 2 using Work-Efficient Scan, then perform Step 3 over n elements in one parallel pass
 4. **GPU with Work-Efficient and Hardware-Efficient Scan:** - same as above line except using Work-Efficient and Hardware-Efficient Scan
 5. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::remove_if
+
+## Part 3: Performance Analysis
+
