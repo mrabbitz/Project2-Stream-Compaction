@@ -23,10 +23,12 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 
 ## Implementation Details
 
-All implementations support arrays of arbitrary size - small, large, powers of two, not powers of two.
+**n represents the number of elements in the array**
+
+**All implementations support arrays of arbitrary n - small, large, powers of two, not powers of two**
 
 ### Scan
-**n represents the number of elements in the array**
+
 
 1. CPU - O(n) addition operations - sequential loop over array elements, accumulating a sum at each iteration
 2. GPU Naive Algorithm - O(n * log<sub>2</sub>(n)) addition operations - over log<sub>2</sub>(n) passes, for pass p starting at p = 1, compute partial sums of n - 2<sup>p - 1</sup> in parallel
