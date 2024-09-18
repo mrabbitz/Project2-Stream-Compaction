@@ -58,13 +58,17 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 ### Stream Compaction
 **Compaction removes invalid elements (0s) from an array of randomized ints**
 
-1. **CPU without Scan:** - sequential loop over input array elements and copying valid array elements to the output array
-2. **CPU with Scan:** - **1) Create Binary Map:** sequential loop over the input array to create a binary array indicating the validity of each input element, **2) Scan:** sequential CPU scan on the binary array to generate a map of indices, where each index corresponds to the compacted output array index of sequential valid input elements, then **3) Scatter:** sequential loop over the binary array to place valid input data into the final output array, using the indices from the scan output to determine the correct positions.
-3. **GPU with Work-Efficient Scan:** - **1) Create Binary Map:** over n elements in one parallel pass, **2) Scan:** using Work-Efficient Scan, then **3) Scatter:** over n elements in one parallel pass
-4. **GPU with Work-Efficient and Hardware-Efficient Scan:** - same as above line except using Work-Efficient and Hardware-Efficient Scan
-5. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::remove_if
+#### Stream Compaction with Scan is described in 3 steps:
+**1) Create Binary Map:** use the input array to create a binary map array indicating the validity of each input element
+**2) Scan:** perform Scan on the binary array to generate a map of index values which correspond to the compacted output array index of sequential valid input elements
+**3) Scatter:** use the binary array to place valid input data into the compacted array, using the index of a valid element to index the Scan output to determine the compacted array index
 
-#### Stream Compaction with Scan
 <p align="left">
   <img src="img/compaction_with_scan.PNG" />
 </p>
+
+1. **CPU without Scan:** - sequential loop over input elements while placing valid input data into the compacted array
+2. **CPU with Scan:** - perform Step 1 with sequential loop over n elements, perform Step 2 using CPU Scan, then perform Step 3 with sequential loop over n elements
+3. **GPU with Work-Efficient Scan:** - perform Step 1 over n elements in one parallel pass, perform Step 2 using Work-Efficient Scan, then perform Step 3 over n elements in one parallel pass
+4. **GPU with Work-Efficient and Hardware-Efficient Scan:** - same as above line except using Work-Efficient and Hardware-Efficient Scan
+5. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::remove_if
