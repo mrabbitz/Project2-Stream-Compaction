@@ -12,98 +12,117 @@ namespace StreamCompaction {
             return timer;
         }
 
-        __global__ void kernelReductionPass(const int bufferLength, const int offset, int* data)
+        __global__ void kernelReductionPass(const int reqThdsForPass, const int offset, int* data)
         {
             int g_index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
-            // index out of bounds or not a rhs child node
-            if ((g_index >= bufferLength) || ((g_index + 1) % (2 * offset) != 0))
+            if (g_index >= reqThdsForPass)
             {
                 return;
             }
 
-            data[g_index] += data[g_index - offset];
+            int left_node_g_index = offset * (2 * g_index + 1) - 1;
+            int right_node_g_index = offset * (2 * g_index + 2) - 1;
+
+            data[right_node_g_index] += data[left_node_g_index];
         }
 
-        __global__ void kernelDownSweepPass(const int bufferLength, const int offset, int* data)
+        __global__ void kernelDownSweepPass(const int reqThdsForPass, const int offset, int* data)
         {
             int g_index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
-            // index out of bounds or not a rhs child node
-            if ((g_index >= bufferLength) || ((g_index + 1) % (2 * offset) != 0))
+            if (g_index >= reqThdsForPass)
             {
                 return;
             }
 
-            int tmp = data[g_index];
-            data[g_index] += data[g_index - offset];
-            data[g_index - offset] = tmp;
+            int left_node_g_index = offset * (2 * g_index + 1) - 1;
+            int right_node_g_index = offset * (2 * g_index + 2) - 1;
+
+            int temp = data[left_node_g_index];
+            data[left_node_g_index] = data[right_node_g_index];
+            data[right_node_g_index] += temp;
         }
 
-        __global__ void kernelEfficientExclusivePrefixSumByBlock(const int n, int* data, int* sums)
+        __global__ void kernelEfficientExclusivePrefixSumByBlock(const int reqThdsPerBlock, int* data, int* blockSums)
         {
+            // allocated on invocation
+            // 2x block size
             extern __shared__ int shared[];
 
             int tx = threadIdx.x;
-            int g_index = blockIdx.x * blockDim.x + tx;
 
-            // Load input into shared memory
-            if (g_index < n)
-            {
-                shared[tx] = data[g_index];
-            }
-            else
-            {
-                shared[tx] = 0;
-            }
-            __syncthreads();
-
-            // Upsweep (Reduction) phase
-            for (int offset = 1; offset < blockSize; offset *= 2)
-            {
-                if ((tx + 1) % (2 * offset) == 0)
-                {
-                    shared[tx] += shared[tx - offset];
-                }
-                __syncthreads();
-            }
-
-            // Write the block sum and then clear it for the Downsweep
-            if (tx == blockSize - 1)
-            {
-                sums[blockIdx.x] = shared[tx];
-                shared[tx] = 0;
-            }
-            __syncthreads();
-
-            // Downsweep phase
-            for (int offset = blockSize >> 1; offset > 0; offset >>= 1)
-            {
-                if ((tx + 1) % (2 * offset) == 0)
-                {
-                    int temp = shared[tx];
-                    shared[tx] += shared[tx - offset];
-                    shared[tx - offset] = temp;
-                }
-                __syncthreads();
-            }
-
-            // Write the results back to global memory
-            if (g_index < n)
-            {
-                data[g_index] = shared[tx];
-            }
-        }
-
-        __global__ void kernelAddBlockSumsToBlockData(const int n, const int* idataBlockSums, int* data)
-        {
-            int g_index = blockIdx.x * blockDim.x + threadIdx.x;
-            if (g_index >= n)
+            if (tx >= reqThdsPerBlock)
             {
                 return;
             }
 
-            data[g_index] += idataBlockSums[blockIdx.x];
+            int g_index = 2 * ((blockIdx.x * blockDim.x) + tx);
+
+            // Load input into shared memory
+            shared[2 * tx]     = data[g_index];
+            shared[2 * tx + 1] = data[g_index + 1];
+
+            int offset = 1;
+
+            // Upsweep (Reduction) phase
+            for (int reqThdsForPass = reqThdsPerBlock; reqThdsForPass > 0; reqThdsForPass >>= 1)
+            {
+                __syncthreads();
+
+                if (tx < reqThdsForPass)
+                {
+                    int left_node_shrd_index = offset * (2 * tx + 1) - 1;
+                    int right_node_shrd_index = offset * (2 * tx + 2) - 1;
+
+                    shared[right_node_shrd_index] += shared[left_node_shrd_index];
+                }
+
+                offset *= 2;
+            }
+
+            // Write the block sum and then clear it for the Downsweep
+            if (tx == 0)
+            {
+                blockSums[blockIdx.x] = shared[2 * reqThdsPerBlock - 1];
+                shared[2 * reqThdsPerBlock - 1] = 0;
+            }
+
+            // Downsweep phase
+            for (int reqThdsForPass = 1; reqThdsForPass <= reqThdsPerBlock; reqThdsForPass *= 2)
+            {
+                offset >>= 1;
+                __syncthreads();
+
+                if (tx < reqThdsForPass)
+                {
+                    int left_node_shrd_index = offset * (2 * tx + 1) - 1;
+                    int right_node_shrd_index = offset * (2 * tx + 2) - 1;
+
+                    int temp = shared[left_node_shrd_index];
+                    shared[left_node_shrd_index] = shared[right_node_shrd_index];
+                    shared[right_node_shrd_index] += temp;
+                }
+            }
+
+            __syncthreads();
+
+            // Write the results back to global memory
+            data[g_index] = shared[2 * tx];
+            data[g_index + 1] = shared[2 * tx + 1];
+        }
+
+        __global__ void kernelAddBlockSumsToBlockData(const int* blockSums, int* data)
+        {
+            int g_index = 2 * ((blockIdx.x * blockDim.x) + threadIdx.x);
+
+            //     *****     blockSize must be a power of 2     *****     //
+            // no reason to check bounds because this kernel is only called if we recursively scan,
+            // meaning the buffer length (of int* data) is going to be (2 * (blockSize)) * (2 to the power of n),
+            // where n is the depth of recursion. To reiterate the first line, n is always >= 1
+
+            data[g_index] += blockSums[blockIdx.x];
+            data[g_index + 1] += blockSums[blockIdx.x];
         }
 
         /**
@@ -140,23 +159,30 @@ namespace StreamCompaction {
                 checkCUDAError("cudaMemset elements n to bufferLength - 1 in dev_data to 0 failed!");
             }
 
-            int blocksPerGrid = (bufferLength + blockSize - 1) / blockSize;
+            int blocksPerGrid = 0;
+            int offset = 1;
 
             if (useGpuTimer) timer().startGpuTimer();
 
 
-            for (int offset = 1; offset < bufferLength; offset *= 2)
+            for (int reqThdsForPass = bufferLength >> 1; reqThdsForPass > 0; reqThdsForPass >>= 1)
             {
-                kernelReductionPass<<<blocksPerGrid, blockSize>>>(bufferLength, offset, dev_data);
+                blocksPerGrid = (reqThdsForPass + blockSize - 1) / blockSize;
+                kernelReductionPass<<<blocksPerGrid, blockSize>>>(reqThdsForPass, offset, dev_data);
                 checkCUDAError("kernelReductionPass failed!");
+
+                offset *= 2;
             }
 
             cudaMemset(dev_data + bufferLength - 1, 0, sizeof(int));
             checkCUDAError("cudaMemset last element in dev_data to 0 failed!");
 
-            for (int offset = bufferLength >> 1; offset > 0; offset >>= 1)
+            for (int reqThdsForPass = 1; reqThdsForPass < bufferLength; reqThdsForPass *= 2)
             {
-                kernelDownSweepPass<<<blocksPerGrid, blockSize>>>(bufferLength, offset, dev_data);
+                offset >>= 1;
+
+                blocksPerGrid = (reqThdsForPass + blockSize - 1) / blockSize;
+                kernelDownSweepPass<<<blocksPerGrid, blockSize>>>(reqThdsForPass, offset, dev_data);
                 checkCUDAError("kernelDownSweepPass failed!");
             }
 
@@ -172,12 +198,15 @@ namespace StreamCompaction {
 
         void efficientExclusivePrefixSumSharedMemory(const bool useGpuTimer, const int n, const int* idata, int* odata)
         {
-            int blocksPerGrid = (n + blockSize - 1) / blockSize;
+            int totalPasses = ilog2ceil(n);
+            int bufferLength = 1 << totalPasses;
+            int reqThdsTotal = bufferLength >> 1;
+            int blocksPerGrid = (reqThdsTotal + blockSize - 1) / blockSize;
 
             int* dev_data;
             int* dev_sums;
 
-            cudaMalloc((void**)&dev_data, sizeof(int) * n);
+            cudaMalloc((void**)&dev_data, sizeof(int) * bufferLength);
             checkCUDAError("cudaMalloc dev_data failed!");
 
             cudaMalloc((void**)&dev_sums, sizeof(int) * blocksPerGrid);
@@ -186,12 +215,19 @@ namespace StreamCompaction {
             cudaMemcpy(dev_data, idata, sizeof(int) * n, cudaMemcpyHostToDevice);
             checkCUDAError("memcpy idata to dev_data failed!");
 
-            int sharedMemoryBytes = blockSize * sizeof(int);
+            if (bufferLength > n)
+            {
+                cudaMemset(dev_data + n, 0, sizeof(int) * (bufferLength - n));
+                checkCUDAError("cudaMemset elements n to bufferLength - 1 in dev_data to 0 failed!");
+            }
+
+            int reqThdsPerBlock = std::min(reqThdsTotal, blockSize);
+            int sharedMemoryBytes = 2 * reqThdsPerBlock * sizeof(int);
 
             if (useGpuTimer) timer().startGpuTimer();
 
-
-            efficientExclusivePrefixSumAnyNumberOfBlocks(sharedMemoryBytes, n, blocksPerGrid, dev_data, dev_sums);
+            
+            efficientExclusivePrefixSumAnyNumberOfBlocks(sharedMemoryBytes, reqThdsPerBlock, blocksPerGrid, dev_data, dev_sums);
 
 
             if (useGpuTimer) timer().endGpuTimer();
@@ -206,26 +242,48 @@ namespace StreamCompaction {
 
         // iterative approach is possible
         // for the sake of submitting this assignement on time, this will have to be explored at a later time
-        void efficientExclusivePrefixSumAnyNumberOfBlocks(const int sharedMemoryBytes, const int n, const int numBlocks, int* data, int* sums)
+        void efficientExclusivePrefixSumAnyNumberOfBlocks(const int sharedMemoryBytes, const int reqThdsPerBlock, const int blocksPerGrid, int* data, int* blockSums)
         {
-            kernelEfficientExclusivePrefixSumByBlock<<<numBlocks, blockSize, sharedMemoryBytes>>>(n, data, sums);
+            kernelEfficientExclusivePrefixSumByBlock<<<blocksPerGrid, blockSize, sharedMemoryBytes>>>(reqThdsPerBlock, data, blockSums);
             checkCUDAError("kernelEfficientExclusivePrefixSumByBlock failed!");
 
-            if (numBlocks > 1)
+            if (blocksPerGrid > 1)
             {
-                int numBlocksForBlockSums = (numBlocks + blockSize - 1) / blockSize;
+                int n_blockSums = blocksPerGrid;
+
+                int totalPasses_blockSums = ilog2ceil(n_blockSums);
+                int bufferLength_blockSums = 1 << totalPasses_blockSums;
+                int reqThdsTotal_blockSums = bufferLength_blockSums >> 1;
+                int blocksPerGrid_blockSums = (reqThdsTotal_blockSums + blockSize - 1) / blockSize;
 
                 int* dev_sums;
+                int* dev_new_sums;
 
-                cudaMalloc((void**)&dev_sums, sizeof(int) * numBlocksForBlockSums);
+                cudaMalloc((void**)&dev_sums, sizeof(int) * bufferLength_blockSums);
                 checkCUDAError("cudaMalloc dev_sums failed!");
 
-                efficientExclusivePrefixSumAnyNumberOfBlocks(sharedMemoryBytes, numBlocks, numBlocksForBlockSums, sums, dev_sums);
+                cudaMalloc((void**)&dev_new_sums, sizeof(int) * blocksPerGrid_blockSums);
+                checkCUDAError("cudaMalloc dev_new_sums failed!");
 
-                kernelAddBlockSumsToBlockData<<<numBlocks, blockSize>>>(n, sums, data);
+                cudaMemcpy(dev_sums, blockSums, sizeof(int) * n_blockSums, cudaMemcpyDeviceToDevice);
+                checkCUDAError("memcpy blockSums to dev_sums failed!");
+
+                if (bufferLength_blockSums > n_blockSums)
+                {
+                    cudaMemset(dev_sums + n_blockSums, 0, sizeof(int) * (bufferLength_blockSums - n_blockSums));
+                    checkCUDAError("cudaMemset elements n_blockSums to bufferLength_blockSums - 1 in dev_sums to 0 failed!");
+                }
+
+                int reqThdsPerBlock_blockSums = std::min(reqThdsTotal_blockSums, blockSize);
+                int sharedMemoryBytes_blockSums = 2 * reqThdsPerBlock_blockSums * sizeof(int);
+
+                efficientExclusivePrefixSumAnyNumberOfBlocks(sharedMemoryBytes_blockSums, reqThdsPerBlock_blockSums, blocksPerGrid_blockSums, dev_sums, dev_new_sums);
+
+                kernelAddBlockSumsToBlockData<<<n_blockSums, blockSize>>>(dev_sums, data);
                 checkCUDAError("kernelAddBlockSumsToBlockData failed!");
 
                 cudaFree(dev_sums);
+                cudaFree(dev_new_sums);
                 checkCUDAError("cudaFree failed!");
             }
         }

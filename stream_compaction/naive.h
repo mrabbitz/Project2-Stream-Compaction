@@ -14,9 +14,9 @@ namespace StreamCompaction {
 
         __global__ void kernelNaiveExclusivePrefixSumByBlock(const int n, const int* idata, int* odata);
 
-        __global__ void kernelExtractBlockSums(const int n, const int numBlocks, const int* idata, int* odata);
+        __global__ void kernelExtractBlockSums(const int n, const int n_blockSums, const int* idata, int* odata);
 
-        __global__ void kernelAddBlockSumsToBlockData(const int n, const int* idataBlockSums, int* data);
+        __global__ void kernelAddBlockSumsToBlockData(const int n, const int* blockSums, int* data);
 
         void scan(int n, int* odata, const int* idata, bool useSharedMemory);
 
@@ -24,6 +24,6 @@ namespace StreamCompaction {
 
         void naiveExclusivePrefixSumSharedMemory(const int n, const int* idata, int* odata);
 
-        void naiveInclusivePrefixSumAnyNumberOfBlocks(const int sharedMemoryBytes, const int n, const int numBlocks, int* idata, int* odata);
+        void naiveInclusivePrefixSumAnyNumberOfBlocks(const int sharedMemoryBytes, const int n, const int blocksPerGrid, int* idata, int* odata);
     }
 }

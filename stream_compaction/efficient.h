@@ -6,13 +6,13 @@ namespace StreamCompaction {
     namespace Efficient {
         StreamCompaction::Common::PerformanceTimer& timer();
 
-        __global__ void kernelReductionPass(const int bufferLength, const int offset, int* data);
+        __global__ void kernelReductionPass(const int reqThdsForPass, const int offset, int* data);
 
-        __global__ void kernelDownSweepPass(const int bufferLength, const int offset, int* data);
+        __global__ void kernelDownSweepPass(const int reqThdsForPass, const int offset, int* data);
 
-        __global__ void kernelEfficientExclusivePrefixSumByBlock(const int n, int* data, int* sums);
+        __global__ void kernelEfficientExclusivePrefixSumByBlock(const int reqThdsPerBlock, int* data, int* blockSums);
 
-        __global__ void kernelAddBlockSumsToBlockData(const int n, const int* idataBlockSums, int* data);
+        __global__ void kernelAddBlockSumsToBlockData(const int* blockSums, int* data);
 
         void scan(int n, int* odata, const int* idata, bool useSharedMemory);
 
@@ -20,7 +20,7 @@ namespace StreamCompaction {
 
         void efficientExclusivePrefixSumSharedMemory(const bool useGpuTimer, const int n, const int* idata, int* odata);
 
-        void efficientExclusivePrefixSumAnyNumberOfBlocks(const int sharedMemoryBytes, const int n, const int numBlocks, int* data, int* sums);
+        void efficientExclusivePrefixSumAnyNumberOfBlocks(const int sharedMemoryBytes, const int reqThdsPerBlock, const int blocksPerGrid, int* data, int* blockSums);
 
         int compact(int n, int* odata, const int* idata, bool useSharedMemory);
     }

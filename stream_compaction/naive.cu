@@ -40,7 +40,7 @@ namespace StreamCompaction {
 
             if (g_index >= offset)
             {
-                odata[g_index] = idata[g_index - offset] + idata[g_index];
+                odata[g_index] = idata[g_index] + idata[g_index - offset];
             }
             else
             {
@@ -79,7 +79,7 @@ namespace StreamCompaction {
 
                 if (tx >= offset)
                 {
-                    shared[writeBuffer * blockSize + tx] = shared[readBuffer * blockSize + tx - offset] + shared[readBuffer * blockSize + tx];
+                    shared[writeBuffer * blockSize + tx] = shared[readBuffer * blockSize + tx] + shared[readBuffer * blockSize + tx - offset];
                 }
                 else
                 {
@@ -124,7 +124,7 @@ namespace StreamCompaction {
 
                 if (tx >= offset)
                 {
-                    shared[writeBuffer * blockSize + tx] = shared[readBuffer * blockSize + tx - offset] + shared[readBuffer * blockSize + tx];
+                    shared[writeBuffer * blockSize + tx] = shared[readBuffer * blockSize + tx] + shared[readBuffer * blockSize + tx - offset];
                 }
                 else
                 {
@@ -137,18 +137,18 @@ namespace StreamCompaction {
             odata[g_index] = shared[writeBuffer * blockSize + tx];
         }
 
-        __global__ void kernelExtractBlockSums(const int n, const int numBlocks, const int* idata, int* odata)
+        __global__ void kernelExtractBlockSums(const int n, const int n_blockSums, const int* idata, int* odata)
         {
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
-            if (g_index >= numBlocks)
+            if (g_index >= n_blockSums)
             {
                 return;
             }
 
-            odata[g_index] = g_index == numBlocks - 1 ? idata[n - 1] : idata[(g_index * blockSize) + blockSize - 1];
+            odata[g_index] = g_index == n_blockSums - 1 ? idata[n - 1] : idata[(g_index * blockSize) + blockSize - 1];
         }
 
-        __global__ void kernelAddBlockSumsToBlockData(const int n, const int* idataBlockSums, int* data)
+        __global__ void kernelAddBlockSumsToBlockData(const int n, const int* blockSums, int* data)
         {
             int g_index = blockIdx.x * blockDim.x + threadIdx.x;
             if (g_index >= n)
@@ -156,7 +156,7 @@ namespace StreamCompaction {
                 return;
             }
 
-            data[g_index] += idataBlockSums[blockIdx.x];
+            data[g_index] += blockSums[blockIdx.x];
         }
 
         /**
@@ -255,43 +255,45 @@ namespace StreamCompaction {
 
         // iterative approach is possible if the blockSums buffers are allocated carefully ahead of time, combined with clever indexing of them at each iteration
         // for the sake of submitting this assignement on time, this will have to be explored at a later time
-        void naiveInclusivePrefixSumAnyNumberOfBlocks(const int sharedMemoryBytes, const int n, const int numBlocks, int* idata, int* odata)
+        void naiveInclusivePrefixSumAnyNumberOfBlocks(const int sharedMemoryBytes, const int n, const int blocksPerGrid, int* idata, int* odata)
         {
-            kernelNaiveInclusivePrefixSumByBlock<<<numBlocks, blockSize, sharedMemoryBytes>>>(n, idata, odata);
+            kernelNaiveInclusivePrefixSumByBlock<<<blocksPerGrid, blockSize, sharedMemoryBytes>>>(n, idata, odata);
             checkCUDAError("kernelNaiveInclusivePrefixSumByBlock failed!");
 
-            if (numBlocks > 1)
+            if (blocksPerGrid > 1)
             {
+                int n_blockSums = blocksPerGrid;
+
                 int* dev_bufferBlockSumsA;
                 int* dev_bufferBlockSumsB;
 
-                cudaMalloc((void**)&dev_bufferBlockSumsA, sizeof(int) * numBlocks);
+                cudaMalloc((void**)&dev_bufferBlockSumsA, sizeof(int) * n_blockSums);
                 checkCUDAError("cudaMalloc dev_bufferBlockSumsA failed!");
 
-                cudaMalloc((void**)&dev_bufferBlockSumsB, sizeof(int) * numBlocks);
+                cudaMalloc((void**)&dev_bufferBlockSumsB, sizeof(int) * n_blockSums);
                 checkCUDAError("cudaMalloc dev_bufferBlockSumsB failed!");
 
-                int numBlocksForBlockSums = (numBlocks + blockSize - 1) / blockSize;
+                int blocksPerGrid_blockSums = (n_blockSums + blockSize - 1) / blockSize;
 
-                kernelExtractBlockSums<<<numBlocksForBlockSums, blockSize>>>(n, numBlocks, odata, dev_bufferBlockSumsA);
+                kernelExtractBlockSums<<<blocksPerGrid_blockSums, blockSize>>>(n, n_blockSums, odata, dev_bufferBlockSumsA);
                 checkCUDAError("kernelExtractBlockSums failed!");
 
-                if (numBlocksForBlockSums > 1)
+                if (blocksPerGrid_blockSums > 1)
                 {
-                    naiveInclusivePrefixSumAnyNumberOfBlocks(sharedMemoryBytes, numBlocks, numBlocksForBlockSums, dev_bufferBlockSumsA, dev_bufferBlockSumsB);
+                    naiveInclusivePrefixSumAnyNumberOfBlocks(sharedMemoryBytes, n_blockSums, blocksPerGrid_blockSums, dev_bufferBlockSumsA, dev_bufferBlockSumsB);
 
-                    kernelInclusiveToExclusivePrefixSum<<<numBlocksForBlockSums, blockSize>>>(numBlocks, dev_bufferBlockSumsB, dev_bufferBlockSumsA);
+                    kernelInclusiveToExclusivePrefixSum<<<blocksPerGrid_blockSums, blockSize>>>(n_blockSums, dev_bufferBlockSumsB, dev_bufferBlockSumsA);
                     checkCUDAError("kernelInclusiveToExclusivePrefixSum failed!");
 
-                    kernelAddBlockSumsToBlockData<<<numBlocks, blockSize>>>(n, dev_bufferBlockSumsA, odata);
+                    kernelAddBlockSumsToBlockData<<<n_blockSums, blockSize>>>(n, dev_bufferBlockSumsA, odata);
                     checkCUDAError("kernelAddBlockSumsToBlockData failed!");
                 }
                 else
                 {
-                    kernelNaiveExclusivePrefixSumByBlock<<<numBlocksForBlockSums, blockSize, sharedMemoryBytes>>>(numBlocks, dev_bufferBlockSumsA, dev_bufferBlockSumsB);
+                    kernelNaiveExclusivePrefixSumByBlock<<<blocksPerGrid_blockSums, blockSize, sharedMemoryBytes>>>(n_blockSums, dev_bufferBlockSumsA, dev_bufferBlockSumsB);
                     checkCUDAError("kernelNaiveExclusivePrefixSumByBlock failed!");
 
-                    kernelAddBlockSumsToBlockData<<<numBlocks, blockSize>>>(n, dev_bufferBlockSumsB, odata);
+                    kernelAddBlockSumsToBlockData<<<n_blockSums, blockSize>>>(n, dev_bufferBlockSumsB, odata);
                     checkCUDAError("kernelAddBlockSumsToBlockData failed!");
                 }
 
