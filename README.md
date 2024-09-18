@@ -14,7 +14,7 @@ This project focuses on implementing various Stream Compaction algorithms, inclu
 ### Stream Compaction
 Stream compaction involves filtering an input data set to produce a new collection that contains only the elements meeting a specified condition, while preserving their original order. This process reduces the size of the data set by removing unwanted elements, which is crucial for optimizing performance and memory usage in applications like path tracing, collision detection, etc.
 
-<p align="center">
+<p align="left">
   <img src="img/stream_compaction_visual.PNG" />
 </p>
 
@@ -42,17 +42,17 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 6. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::exclusive_scan
 
 **GPU Naive Algorithm Inclusive Scan**
-<p align="center">
+<p align="left">
   <img src="img/gpu_inclusive_naive.PNG" />
 </p>
 
 **GPU Work-Efficient Algorithm Exclusive Scan**
 Upsweep:
-<p align="center">
+<p align="left">
   <img src="img/gpu_exclusive_efficient_upsweep.PNG" />
 </p>
 
 Downsweep:
-<p align="center">
+<p align="left">
   <img src="img/gpu_excluisve_efficient_downsweep.PNG" />
 </p>
