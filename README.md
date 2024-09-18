@@ -30,9 +30,9 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 ### Scan
 
 
-1. **CPU**  O(n) addition operations - sequential loop over array elements, accumulating a sum at each iteration
-2. **GPU Naive Algorithm**  O(n * log<sub>2</sub>(n)) addition operations - over log<sub>2</sub>(n) passes, for pass p starting at p = 1, compute partial sums of n - 2<sup>p - 1</sup> in parallel
-3. **GPU Work-Efficient Algorithm**  O(n) operations: performs scan into two phases - parallel upsweep (reduction) with n - 1 adds (O(n)), and parallel downsweep with n - 1 adds (O(n)) and n - 1 swaps (O(n))
-4. **GPU Naive Algorithm with Hardware Efficiency**  shared memory - divide the array into evenly-sized blocks, each of which is scanned by a single thread block. Utilize shared memory within each thread block to perform the scan and write the total sum of each block to a separate array of block sums. Then, scan the array of block sums to create an array of block increments, which are added to all elements within their respective blocks.
-5. **GPU Work-Efficient Algorithm with Hardware Efficiency**  shared memory - same process as above
-6. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust)** - wrapper function using thrust::exclusive_scan
+1. **CPU:**  O(n) addition operations - sequential loop over array elements, accumulating a sum at each iteration
+2. **GPU Naive Algorithm:**  O(n * log<sub>2</sub>(n)) addition operations - over log<sub>2</sub>(n) passes, for pass p starting at p = 1, compute partial sums of n - 2<sup>p - 1</sup> in parallel
+3. **GPU Work-Efficient Algorithm:**  O(n) operations: performs scan into two phases - parallel upsweep (reduction) with n - 1 adds (O(n)), and parallel downsweep with n - 1 adds (O(n)) and n - 1 swaps (O(n))
+4. **GPU Naive Algorithm with Hardware Efficiency:**  shared memory - divide the array into evenly-sized blocks, each of which is scanned by a single thread block. Utilize shared memory within each thread block to perform the scan and write the total sum of each block to a separate array of block sums. Then, scan the array of block sums to create an array of block increments, which are added to all elements within their respective blocks.
+5. **GPU Work-Efficient Algorithm with Hardware Efficiency:**  shared memory - same process as above
+6. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::exclusive_scan
