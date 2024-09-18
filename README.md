@@ -14,12 +14,16 @@ This project focuses on implementing various Stream Compaction algorithms, inclu
 ### Stream Compaction
 Stream compaction involves filtering an input data set to produce a new collection that contains only the elements meeting a specified condition, while preserving their original order. This process reduces the size of the data set by removing unwanted elements, which is crucial for optimizing performance and memory usage in applications like path tracing, collision detection, etc.
 
-![Stream Compaction](img/stream_compaction_visual.PNG)
+<p align="center">
+  <img src="img/stream_compaction_visual.PNG" />
+</p>
 
 ### Scan
 The Scan algorithm, also known as the all-prefix-sums operation, computes prefix sums for an array of data. In an exclusive scan, each element in the result is the sum of all preceding elements in the input array. Conversely, an inclusive scan includes the current element in the sum. Scan algorithms are fundamental in parallel computing for tasks like sorting, stream compaction, and building data structures, as they transform inherently sequential computations into parallel ones.
 
-![Scan](img/scan_visual.PNG)
+<p align="center">
+  <img src="img/scan_visual.PNG" />
+</p>
 
 ## Implementation Details
 
@@ -41,11 +45,14 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 <p align="center">
   <img src="img/gpu_inclusive_naive.PNG" />
 </p>
-![Naive Visual](img/gpu_inclusive_naive.PNG)
 
 **GPU Work-Efficient Algorithm Exclusive Scan**
 Upsweep:
-![Upsweep Visual](img/gpu_exclusive_efficient_upsweep.PNG)
+<p align="center">
+  <img src="img/gpu_exclusive_efficient_upsweep.PNG" />
+</p>
 
 Downsweep:
-![Downsweep Visual](img/gpu_excluisve_efficient_downsweep.PNG)
+<p align="center">
+  <img src="img/gpu_excluisve_efficient_downsweep.PNG" />
+</p>
