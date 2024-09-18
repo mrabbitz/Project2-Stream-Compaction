@@ -32,27 +32,34 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 **All implementations support arrays of arbitrary n - small, large, powers of two, not powers of two**
 
 ### Scan
-
-
 1. **CPU:**  O(n) addition operations - sequential loop over array elements, accumulating a sum at each iteration
-2. **GPU Naive Algorithm:**  O(n * log<sub>2</sub>(n)) addition operations - over log<sub>2</sub>(n) passes, for pass p starting at p = 1, compute partial sums of n - 2<sup>p - 1</sup> elements in parallel
+2. **GPU Naive Algorithm:**  O(n * log<sub>2</sub>(n)) addition operations - over log<sub>2</sub>(n) passes, for pass p starting at p = 1, compute the partial sums of n - 2<sup>p - 1</sup> elements in parallel
 3. **GPU Work-Efficient Algorithm:**  O(n) operations - performs scan into two phases: parallel upsweep (reduction) with n - 1 adds (O(n)), and parallel downsweep with n - 1 adds (O(n)) and n - 1 swaps (O(n))
 4. **GPU Naive Algorithm with Hardware Efficiency:**  shared memory - divide the array into evenly-sized blocks, each of which is scanned by a single thread block. Utilize shared memory within each thread block to perform the scan and write the total sum of each block to a separate array of block sums. Then, scan the array of block sums to create an array of block increments, which are added to all elements within their respective blocks.
 5. **GPU Work-Efficient Algorithm with Hardware Efficiency:**  shared memory - same process as above
 6. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::exclusive_scan
 
-**GPU Naive Algorithm Inclusive Scan**
+#### Inclusive Scan - GPU Naive Algorithm:
 <p align="left">
   <img src="img/gpu_inclusive_naive.PNG" />
 </p>
 
-**GPU Work-Efficient Algorithm Exclusive Scan**
-Upsweep:
+#### Exclusive Scan - GPU Work-Efficient Algorithm:
+**Upsweep**
 <p align="left">
   <img src="img/gpu_exclusive_efficient_upsweep.PNG" />
 </p>
 
-Downsweep:
+**Downsweep**
 <p align="left">
   <img src="img/gpu_excluisve_efficient_downsweep.PNG" />
 </p>
+
+### Stream Compaction
+**Compaction removes invalid elements (0s) from an array of randomized ints**
+
+1. **CPU without Scan:** - sequential loop over input array elements and copying valid array elements to the output array
+2. **CPU with Scan:** - **1) Create Binary Map:** sequential loop over the input array to create a binary array indicating the validity of each input element, **2) Scan:** sequential CPU scan on the binary array to generate a map of indices, where each index corresponds to the compacted output array index of sequential valid input elements, then **3) Scatter:** sequential loop over the binary array to place valid input data into the final output array, using the indices from the scan output to determine the correct positions.
+3. **GPU with Work-Efficient Scan:** - **1) Create Binary Map:** over n elements in one parallel pass, **2) Scan:** using Work-Efficient Scan, then **3) Scatter:** over n elements in one parallel pass
+4. **GPU with Work-Efficient and Hardware-Efficient Scan:** - same as above line except using Work-Efficient and Hardware-Efficient Scan
+5. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::remove_if
