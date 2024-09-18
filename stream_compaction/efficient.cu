@@ -3,6 +3,15 @@
 #include "common.h"
 #include "efficient.h"
 
+#define NUM_BANKS 32
+#define LOG_NUM_BANKS 5
+#ifdef ZERO_BANK_CONFLICTS
+#define CONFLICT_FREE_OFFSET(n) \
+ ((n) >> (LOG_NUM_BANKS) + (n) >> (2 * LOG_NUM_BANKS))
+#else
+#define CONFLICT_FREE_OFFSET(n) ((n) >> LOG_NUM_BANKS)
+#endif
+
 namespace StreamCompaction {
     namespace Efficient {
         using StreamCompaction::Common::PerformanceTimer;
@@ -57,11 +66,19 @@ namespace StreamCompaction {
                 return;
             }
 
-            int g_index = 2 * ((blockIdx.x * blockDim.x) + tx);
+            int g_index = 2 * (blockIdx.x * blockDim.x) + tx;
+
+            int ai = tx;
+            int bi = tx + reqThdsPerBlock;
+            int g_ai = g_index;
+            int g_bi = g_index + reqThdsPerBlock;
+
+            int bankOffsetA = CONFLICT_FREE_OFFSET(ai);
+            int bankOffsetB = CONFLICT_FREE_OFFSET(bi);
 
             // Load input into shared memory
-            shared[2 * tx]     = data[g_index];
-            shared[2 * tx + 1] = data[g_index + 1];
+            shared[ai + bankOffsetA] = data[g_ai];
+            shared[bi + bankOffsetB] = data[g_bi];
 
             int offset = 1;
 
@@ -74,6 +91,8 @@ namespace StreamCompaction {
                 {
                     int left_node_shrd_index = offset * (2 * tx + 1) - 1;
                     int right_node_shrd_index = offset * (2 * tx + 2) - 1;
+                    left_node_shrd_index += CONFLICT_FREE_OFFSET(left_node_shrd_index);
+                    right_node_shrd_index += CONFLICT_FREE_OFFSET(right_node_shrd_index);
 
                     shared[right_node_shrd_index] += shared[left_node_shrd_index];
                 }
@@ -84,8 +103,11 @@ namespace StreamCompaction {
             // Write the block sum and then clear it for the Downsweep
             if (tx == 0)
             {
-                blockSums[blockIdx.x] = shared[2 * reqThdsPerBlock - 1];
-                shared[2 * reqThdsPerBlock - 1] = 0;
+                int n_minus_1 = 2 * reqThdsPerBlock - 1;
+                n_minus_1 += CONFLICT_FREE_OFFSET(n_minus_1);
+
+                blockSums[blockIdx.x] = shared[n_minus_1];
+                shared[n_minus_1] = 0;
             }
 
             // Downsweep phase
@@ -98,6 +120,8 @@ namespace StreamCompaction {
                 {
                     int left_node_shrd_index = offset * (2 * tx + 1) - 1;
                     int right_node_shrd_index = offset * (2 * tx + 2) - 1;
+                    left_node_shrd_index += CONFLICT_FREE_OFFSET(left_node_shrd_index);
+                    right_node_shrd_index += CONFLICT_FREE_OFFSET(right_node_shrd_index);
 
                     int temp = shared[left_node_shrd_index];
                     shared[left_node_shrd_index] = shared[right_node_shrd_index];
@@ -108,8 +132,8 @@ namespace StreamCompaction {
             __syncthreads();
 
             // Write the results back to global memory
-            data[g_index] = shared[2 * tx];
-            data[g_index + 1] = shared[2 * tx + 1];
+            data[g_ai] = shared[ai + bankOffsetA];
+            data[g_bi] = shared[bi + bankOffsetB];
         }
 
         __global__ void kernelAddBlockSumsToBlockData(const int* blockSums, int* data)
@@ -222,7 +246,8 @@ namespace StreamCompaction {
             }
 
             int reqThdsPerBlock = std::min(reqThdsTotal, blockSize);
-            int sharedMemoryBytes = 2 * reqThdsPerBlock * sizeof(int);
+            int procElemsPerBlock = 2 * reqThdsPerBlock;
+            int sharedMemoryBytes = sizeof(int) * (procElemsPerBlock + (procElemsPerBlock / NUM_BANKS) + (procElemsPerBlock / (NUM_BANKS * NUM_BANKS)));
 
             if (useGpuTimer) timer().startGpuTimer();
 
@@ -275,7 +300,8 @@ namespace StreamCompaction {
                 }
 
                 int reqThdsPerBlock_blockSums = std::min(reqThdsTotal_blockSums, blockSize);
-                int sharedMemoryBytes_blockSums = 2 * reqThdsPerBlock_blockSums * sizeof(int);
+                int procElemsPerBlock_blockSums = 2 * reqThdsPerBlock_blockSums;
+                int sharedMemoryBytes_blockSums = sizeof(int) * (procElemsPerBlock_blockSums + (procElemsPerBlock_blockSums / NUM_BANKS) + (procElemsPerBlock_blockSums / (NUM_BANKS * NUM_BANKS)));
 
                 efficientExclusivePrefixSumAnyNumberOfBlocks(sharedMemoryBytes_blockSums, reqThdsPerBlock_blockSums, blocksPerGrid_blockSums, dev_sums, dev_new_sums);
 
