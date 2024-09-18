@@ -32,6 +32,7 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 **All implementations support arrays of arbitrary n - small, large, powers of two, not powers of two**
 
 ### Scan
+#### Implementations
 1. **CPU:**  O(n) addition operations - sequential loop over array elements, accumulating a sum at each iteration
 2. **GPU Naive Algorithm:**  O(n * log<sub>2</sub>(n)) addition operations - over log<sub>2</sub>(n) passes, for pass p starting at p = 1, compute the partial sums of n - 2<sup>p - 1</sup> elements in parallel
 3. **GPU Work-Efficient Algorithm:**  O(n) operations - performs scan into two phases: parallel upsweep (reduction) with n - 1 adds (O(n)), and parallel downsweep with n - 1 adds (O(n)) and n - 1 swaps (O(n))
@@ -61,12 +62,13 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 #### Stream Compaction with Scan is described in 3 steps:
 1. **Create Binary Map:** use the input array to create a binary map array indicating the validity of each input element
 2. **Scan:** perform Scan on the binary array to generate a map of index values which correspond to the compacted array index of sequential valid input elements
-3. **Scatter:** use the binary array to place valid input data into the compacted array, using the index of a valid element to index the Scan output to determine the compacted array index
+3. **Scatter:** use the indices of the binary array that indicate valid input elements, use those indices to index the Scan array to determine the compated array index of the valid element, then place valid element data into the compacted array
 
 <p align="left">
   <img src="img/compaction_with_scan.PNG" />
 </p>
 
+#### Implementations
 1. **CPU without Scan:** - sequential loop over input elements while placing valid input data into the compacted array
 2. **CPU with Scan:** - perform Step 1 with sequential loop over n elements, perform Step 2 using CPU Scan, then perform Step 3 with sequential loop over n elements
 3. **GPU with Work-Efficient Scan:** - perform Step 1 over n elements in one parallel pass, perform Step 2 using Work-Efficient Scan, then perform Step 3 over n elements in one parallel pass
