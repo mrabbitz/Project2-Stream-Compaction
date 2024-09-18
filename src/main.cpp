@@ -13,11 +13,32 @@
 #include <stream_compaction/thrust.h>
 #include "testing_helpers.hpp"
 
+const bool runXNumTestsAndGetAverage = false;
+const int numTests = 10;
+int testCount = 0;
+float testResults[numTests];
+
 const int SIZE = 1 << 8; // feel free to change the size of array
 const int NPOT = SIZE - 3; // Non-Power-Of-Two
 int *a = new int[SIZE];
 int *b = new int[SIZE];
 int *c = new int[SIZE];
+
+void printAverageOfTestsAndResetTestCount(bool ranOnGPU)
+{
+    float average = 0.f;
+    for (int i = 0; i < numTests; ++i)
+    {
+        average += testResults[i];
+    }
+    average /= numTests;
+
+    std::cout << "Average Runtime of " << numTests << " runs: ";
+    printElapsedTime(average, ranOnGPU ? "(CUDA Measured)" : "(std::chrono Measured)");
+    std::cout << std::endl;
+
+    testCount = 0;
+}
 
 int main(int argc, char* argv[]) {
     // Scan tests
@@ -34,94 +55,275 @@ int main(int argc, char* argv[]) {
     // initialize b using StreamCompaction::CPU::scan you implement
     // We use b for further comparison. Make sure your StreamCompaction::CPU::scan is correct.
     // At first all cases passed because b && c are all zeroes.
-    zeroArray(SIZE, b);
-    printDesc("cpu scan, power-of-two");
-    StreamCompaction::CPU::scan(SIZE, b, a);
-    printElapsedTime(StreamCompaction::CPU::timer().getCpuElapsedTimeForPreviousOperation(), "(std::chrono Measured)");
-    printArray(SIZE, b, true);
 
-    zeroArray(SIZE, c);
-    printDesc("cpu scan, non-power-of-two");
-    StreamCompaction::CPU::scan(NPOT, c, a);
-    printElapsedTime(StreamCompaction::CPU::timer().getCpuElapsedTimeForPreviousOperation(), "(std::chrono Measured)");
-    printArray(NPOT, b, true);
-    printCmpResult(NPOT, b, c);
+    do
+    {
+        zeroArray(SIZE, b);
+        if (testCount == 0)
+        {
+            printDesc("cpu scan, power-of-two");
+        }
+        StreamCompaction::CPU::scan(SIZE, b, a);
+        testResults[testCount] = StreamCompaction::CPU::timer().getCpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            printArray(SIZE, b, true);
+        }
+        printElapsedTime(testResults[testCount], "(std::chrono Measured)");
+    } while (runXNumTestsAndGetAverage && ++testCount < numTests);
 
-    zeroArray(SIZE, c);
-    printDesc("naive scan, power-of-two, no shared memory");
-    StreamCompaction::Naive::scan(SIZE, c, a, false);
-    printElapsedTime(StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
-    //printArray(SIZE, c, true);
-    printCmpResult(SIZE, b, c);
+    if (runXNumTestsAndGetAverage)
+    {
+        printAverageOfTestsAndResetTestCount(false);
+    }
 
-    /* For bug-finding only: Array of 1s to help find bugs in stream compaction or scan
-    onesArray(SIZE, c);
-    printDesc("1s array for finding bugs");
-    StreamCompaction::Naive::scan(SIZE, c, a);
-    printArray(SIZE, c, true); */
+    do
+    {
+        zeroArray(SIZE, c);
+        if (testCount == 0)
+        {
+            printDesc("cpu scan, non-power-of-two");
+        }
+        StreamCompaction::CPU::scan(NPOT, c, a);
+        testResults[testCount] = StreamCompaction::CPU::timer().getCpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            printArray(NPOT, c, true);
+        }
+        printElapsedTime(testResults[testCount], "(std::chrono Measured)");
+        printCmpResult(NPOT, b, c);
+    } while (runXNumTestsAndGetAverage && ++testCount < numTests);
 
-    zeroArray(SIZE, c);
-    printDesc("naive scan, non-power-of-two, no shared memory");
-    StreamCompaction::Naive::scan(NPOT, c, a, false);
-    printElapsedTime(StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
-    //printArray(SIZE, c, true);
-    printCmpResult(NPOT, b, c);
+    if (runXNumTestsAndGetAverage)
+    {
+        printAverageOfTestsAndResetTestCount(false);
+    }
 
-    zeroArray(SIZE, c);
-    printDesc("naive scan, power-of-two, shared memory");
-    StreamCompaction::Naive::scan(SIZE, c, a, true);
-    printElapsedTime(StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
-    //printArray(SIZE, c, true);
-    printCmpResult(SIZE, b, c);
+	do
+	{
+		zeroArray(SIZE, c);
+        if (testCount == 0)
+        {
+            printDesc("naive scan, power-of-two, no shared memory");
+        }
+		StreamCompaction::Naive::scan(SIZE, c, a, false);
+        testResults[testCount] = StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            //printArray(SIZE, c, true);
+        }
+		printElapsedTime(testResults[testCount], "(CUDA Measured)");
+		printCmpResult(SIZE, b, c);
+	} while (runXNumTestsAndGetAverage && ++testCount < numTests);
 
-    zeroArray(SIZE, c);
-    printDesc("naive scan, non-power-of-two, shared memory");
-    StreamCompaction::Naive::scan(NPOT, c, a, true);
-    printElapsedTime(StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
-    //printArray(SIZE, c, true);
-    printCmpResult(NPOT, b, c);
+	if (runXNumTestsAndGetAverage)
+	{
+		printAverageOfTestsAndResetTestCount(true);
+	}
 
-    zeroArray(SIZE, c);
-    printDesc("work-efficient scan, power-of-two, no shared memory");
-    StreamCompaction::Efficient::scan(SIZE, c, a, false);
-    printElapsedTime(StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
-    //printArray(SIZE, c, true);
-    printCmpResult(SIZE, b, c);
+	/* For bug-finding only: Array of 1s to help find bugs in stream compaction or scan
+	onesArray(SIZE, c);
+	printDesc("1s array for finding bugs");
+	StreamCompaction::Naive::scan(SIZE, c, a);
+	printArray(SIZE, c, true); */
 
-    zeroArray(SIZE, c);
-    printDesc("work-efficient scan, non-power-of-two, no shared memory");
-    StreamCompaction::Efficient::scan(NPOT, c, a, false);
-    printElapsedTime(StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
-    //printArray(NPOT, c, true);
-    printCmpResult(NPOT, b, c);
+	do
+	{
+		zeroArray(SIZE, c);
+        if (testCount == 0)
+        {
+            printDesc("naive scan, non-power-of-two, no shared memory");
+        }
+		StreamCompaction::Naive::scan(NPOT, c, a, false);
+        testResults[testCount] = StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            //printArray(NPOT, c, true);
+        }
+		printElapsedTime(testResults[testCount], "(CUDA Measured)");
+		printCmpResult(NPOT, b, c);
+	} while (runXNumTestsAndGetAverage && ++testCount < numTests);
 
-    zeroArray(SIZE, c);
-    printDesc("work-efficient scan, power-of-two, shared memory");
-    StreamCompaction::Efficient::scan(SIZE, c, a, true);
-    printElapsedTime(StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
-    //printArray(SIZE, c, true);
-    printCmpResult(SIZE, b, c);
+	if (runXNumTestsAndGetAverage)
+	{
+		printAverageOfTestsAndResetTestCount(true);
+	}
 
-    zeroArray(SIZE, c);
-    printDesc("work-efficient scan, non-power-of-two, shared memory");
-    StreamCompaction::Efficient::scan(NPOT, c, a, true);
-    printElapsedTime(StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
-    //printArray(NPOT, c, true);
-    printCmpResult(NPOT, b, c);
+	do
+	{
+		zeroArray(SIZE, c);
+        if (testCount == 0)
+        {
+            printDesc("naive scan, power-of-two, shared memory");
+        }
+		StreamCompaction::Naive::scan(SIZE, c, a, true);
+        testResults[testCount] = StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            //printArray(SIZE, c, true);
+        }
+		printElapsedTime(testResults[testCount], "(CUDA Measured)");
+		printCmpResult(SIZE, b, c);
+	} while (runXNumTestsAndGetAverage && ++testCount < numTests);
 
-    zeroArray(SIZE, c);
-    printDesc("thrust scan, power-of-two");
-    StreamCompaction::Thrust::scan(SIZE, c, a);
-    printElapsedTime(StreamCompaction::Thrust::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
-    //printArray(SIZE, c, true);
-    printCmpResult(SIZE, b, c);
+	if (runXNumTestsAndGetAverage)
+	{
+		printAverageOfTestsAndResetTestCount(true);
+	}
 
-    zeroArray(SIZE, c);
-    printDesc("thrust scan, non-power-of-two");
-    StreamCompaction::Thrust::scan(NPOT, c, a);
-    printElapsedTime(StreamCompaction::Thrust::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
-    //printArray(NPOT, c, true);
-    printCmpResult(NPOT, b, c);
+	do
+	{
+		zeroArray(SIZE, c);
+        if (testCount == 0)
+        {
+            printDesc("naive scan, non-power-of-two, shared memory");
+        }
+		StreamCompaction::Naive::scan(NPOT, c, a, true);
+        testResults[testCount] = StreamCompaction::Naive::timer().getGpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            //printArray(NPOT, c, true);
+        }
+		printElapsedTime(testResults[testCount], "(CUDA Measured)");
+		printCmpResult(NPOT, b, c);
+	} while (runXNumTestsAndGetAverage && ++testCount < numTests);
+
+	if (runXNumTestsAndGetAverage)
+	{
+		printAverageOfTestsAndResetTestCount(true);
+	}
+
+	do
+	{
+		zeroArray(SIZE, c);
+        if (testCount == 0)
+        {
+            printDesc("work-efficient scan, power-of-two, no shared memory");
+        }
+		StreamCompaction::Efficient::scan(SIZE, c, a, false);
+        testResults[testCount] = StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            //printArray(SIZE, c, true);
+        }
+		printElapsedTime(testResults[testCount], "(CUDA Measured)");
+		printCmpResult(SIZE, b, c);
+	} while (runXNumTestsAndGetAverage && ++testCount < numTests);
+
+	if (runXNumTestsAndGetAverage)
+	{
+		printAverageOfTestsAndResetTestCount(true);
+	}
+
+	do
+	{
+		zeroArray(SIZE, c);
+        if (testCount == 0)
+        {
+            printDesc("work-efficient scan, non-power-of-two, no shared memory");
+        }
+		StreamCompaction::Efficient::scan(NPOT, c, a, false);
+        testResults[testCount] = StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            //printArray(NPOT, c, true);
+        }
+		printElapsedTime(testResults[testCount], "(CUDA Measured)");
+		printCmpResult(NPOT, b, c);
+	} while (runXNumTestsAndGetAverage && ++testCount < numTests);
+
+	if (runXNumTestsAndGetAverage)
+	{
+		printAverageOfTestsAndResetTestCount(true);
+	}
+
+	do
+	{
+		zeroArray(SIZE, c);
+        if (testCount == 0)
+        {
+            printDesc("work-efficient scan, power-of-two, shared memory");
+        }
+		StreamCompaction::Efficient::scan(SIZE, c, a, true);
+        testResults[testCount] = StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            //printArray(SIZE, c, true);
+        }
+		printElapsedTime(testResults[testCount], "(CUDA Measured)");
+		printCmpResult(SIZE, b, c);
+	} while (runXNumTestsAndGetAverage && ++testCount < numTests);
+
+	if (runXNumTestsAndGetAverage)
+	{
+		printAverageOfTestsAndResetTestCount(true);
+	}
+
+	do
+	{
+		zeroArray(SIZE, c);
+        if (testCount == 0)
+        {
+            printDesc("work-efficient scan, non-power-of-two, shared memory");
+        }
+		StreamCompaction::Efficient::scan(NPOT, c, a, true);
+        testResults[testCount] = StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            //printArray(NPOT, c, true);
+        }
+		printElapsedTime(testResults[testCount], "(CUDA Measured)");
+		printCmpResult(NPOT, b, c);
+	} while (runXNumTestsAndGetAverage && ++testCount < numTests);
+
+	if (runXNumTestsAndGetAverage)
+	{
+		printAverageOfTestsAndResetTestCount(true);
+	}
+
+	do
+	{
+		zeroArray(SIZE, c);
+        if (testCount == 0)
+        {
+            printDesc("thrust scan, power-of-two");
+        }
+		StreamCompaction::Thrust::scan(SIZE, c, a);
+        testResults[testCount] = StreamCompaction::Thrust::timer().getGpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            //printArray(SIZE, c, true);
+        }
+		printElapsedTime(testResults[testCount], "(CUDA Measured)");
+		printCmpResult(SIZE, b, c);
+	} while (runXNumTestsAndGetAverage && ++testCount < numTests);
+
+	if (runXNumTestsAndGetAverage)
+	{
+		printAverageOfTestsAndResetTestCount(true);
+	}
+
+	do
+	{
+		zeroArray(SIZE, c);
+        if (testCount == 0)
+        {
+            printDesc("thrust scan, non-power-of-two");
+        }
+		StreamCompaction::Thrust::scan(NPOT, c, a);
+        testResults[testCount] = StreamCompaction::Thrust::timer().getGpuElapsedTimeForPreviousOperation();
+        if (testCount == 0)
+        {
+            //printArray(NPOT, c, true);
+        }
+		printElapsedTime(testResults[testCount], "(CUDA Measured)");
+		printCmpResult(NPOT, b, c);
+	} while (runXNumTestsAndGetAverage && ++testCount < numTests);
+
+	if (runXNumTestsAndGetAverage)
+	{
+		printAverageOfTestsAndResetTestCount(true);
+	}
 
     printf("\n");
     printf("*****************************\n");
