@@ -56,7 +56,7 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 </p>
 
 ### Stream Compaction
-**Compaction removes 0s from an array of randomized ints**
+**Compaction removes invalid elements (0s) from an array of randomized ints**
 
 1. **CPU without Scan:** - sequential loop over input array elements and copying valid array elements to the output array
 2. **CPU with Scan:** - **1) Create Binary Map:** sequential loop over the input array to create a binary array indicating the validity of each input element, **2) Scan:** sequential CPU scan on the binary array to generate a map of indices, where each index corresponds to the position of valid input data in the compacted output array, then **3) Scatter:** sequential loop over the binary array to place valid input data into the final output array, using the indices from the scan output to determine the correct positions.
