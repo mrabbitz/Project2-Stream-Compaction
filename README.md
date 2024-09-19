@@ -78,6 +78,7 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 ## Part 3: Performance Analysis
 ### Optimal Block Size
 **For each GPU Scan implementation, find the block size that gives the minimal runtime on the GPU**
+
 **Each data point is the average of 100 runtime samples**
 <p align="left">
   <img src="img/runtime_vs_blocksize.png" />
@@ -87,6 +88,7 @@ Based on the chart, it is clear that block size of 128 is optimal.
 
 ### Runtime
 **This includes the CPU Scan implementation, the GPU Scan implementations, and the Thrust Scan**
+
 **Each data point is the average of 100 runtime samples**
 <p align="left">
   <img src="img/runtime_vs_arraysize.png" />
