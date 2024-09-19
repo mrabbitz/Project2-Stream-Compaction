@@ -121,11 +121,14 @@ The Naive & Hardware-Efficient Scan and Work-Efficient & Hardware-Efficient Scan
 Thrust clearly starts to pull away as we get to the largest array sizes, but I am proud of how my Work-Efficient & Hardware-Efficient Scan gives it a run for its money!
 
 
-**Look at Thrust Implementation**
-
 ### Performance Bottlenecks
 
-### Output
+
+
+### Sample Output
+This output is used to test the correctness and timing of all Scan and Stream Compaction implementations.
+
+In this sample, Array Size of 2<sup>1</sup> is used.
 
 
 
