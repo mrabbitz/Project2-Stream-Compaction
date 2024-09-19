@@ -93,9 +93,7 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 |512         |116.8       |14.4                       |48.3      |10.5                     |
 |1024        |118.1       |16.6                       |50.4      |12.4                     |
 
-<h1 style="font-size: 24px;">Performance Comparison</h1>
-
-<table style="font-size: 14px;">
+<table style="font-size: 12px;">
   <tr><th>Block Size</th><th>Naive (ms)</th><th>Naive & Hardware-Eff (ms)</th><th>Work-Eff</th><th>Work-Eff & Hardware-Eff</th></tr>
   <tr><td>32</td><td>191.8</td><td>24</td><td>47.6</td><td>13.1</td></tr>
   <tr><td>64</td><td>116.9</td><td>14.4</td><td>47.9</td><td>9.7</td></tr>
