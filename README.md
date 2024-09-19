@@ -114,6 +114,13 @@ Based on the results, it is clear that block size of 128 is optimal.
 |2<sup>22</sup>|2.8498    |2.9690       |0.7290                      |1.4791     |0.4043                    |0.3592        |
 |2<sup>24</sup>|13.7399   |12.8068      |1.9275                      |5.9673     |1.2438                    |0.6996        |
 
+Based on the results, we see that the CPU implementation is the fastest up to array size 2<sup>18.
+As array size continues to increase past this, all of the GPU algorithms besides Naive get relatively exponentially faster.
+Work-Efficient, although much better than CPU and Naive, does itself start to have exponentially longer run times as we get to very large sizes.
+The Naive & Hardware-Efficient Scan and Work-Efficient & Hardware-Efficient Scan both exemplify the signficance of using shared memory best practices (no bank conflicts) and warp partitioning.
+Thrust clearly starts to pull away as we get to the largest array sizes, but I am proud of how my Work-Efficient & Hardware-Efficient Scan gives it a run for its money!
+
+
 **Look at Thrust Implementation**
 
 ### Performance Bottlenecks
