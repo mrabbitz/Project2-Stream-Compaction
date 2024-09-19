@@ -128,87 +128,85 @@ Thrust clearly starts to pull away as we get to the largest array sizes, but I a
 ### Sample Output
 This output is used to test the correctness and timing of all Scan and Stream Compaction implementations.
 
-In this sample, Array Size of 2<sup>24</sup> is used.
+In this sample, Array Size of 2<sup>20</sup> is used.
 
 ```
 ****************
 ** SCAN TESTS **
 ****************
-    [  10  24   6  11  37  31  47  36  38   4   3  23   7 ...  37   0 ]
+    [  12  47  23   8  49  44  11   3  48  22  33   4  12 ...  31   0 ]
 ==== cpu scan, power-of-two ====
-    [   0  10  34  40  51  88 119 166 202 240 244 247 270 ... 410880278 410880315 ]
-   elapsed time: 8.9393ms    (std::chrono Measured)
+    [   0  12  59  82  90 139 183 194 197 245 267 300 304 ... 25666918 25666949 ]
+   elapsed time: 0.6517ms    (std::chrono Measured)
 ==== cpu scan, non-power-of-two ====
-    [   0  10  34  40  51  88 119 166 202 240 244 247 270 ... 410880214 410880229 ]
-   elapsed time: 9.9229ms    (std::chrono Measured)
+    [   0  12  59  82  90 139 183 194 197 245 267 300 304 ... 25666812 25666855 ]
+   elapsed time: 0.5208ms    (std::chrono Measured)
     passed
 ==== naive scan, power-of-two, no shared memory ====
-   elapsed time: 14.9629ms    (CUDA Measured)
+   elapsed time: 1.07728ms    (CUDA Measured)
     passed
 ==== naive scan, non-power-of-two, no shared memory ====
-   elapsed time: 14.8562ms    (CUDA Measured)
+   elapsed time: 0.843456ms    (CUDA Measured)
     passed
 ==== naive scan, power-of-two, shared memory ====
-   elapsed time: 2.76256ms    (CUDA Measured)
+   elapsed time: 0.49872ms    (CUDA Measured)
     passed
 ==== naive scan, non-power-of-two, shared memory ====
-   elapsed time: 2.8567ms    (CUDA Measured)
+   elapsed time: 0.477088ms    (CUDA Measured)
     passed
 ==== work-efficient scan, power-of-two, no shared memory ====
-   elapsed time: 6.52701ms    (CUDA Measured)
+   elapsed time: 0.566848ms    (CUDA Measured)
     passed
 ==== work-efficient scan, non-power-of-two, no shared memory ====
-   elapsed time: 6.2935ms    (CUDA Measured)
+   elapsed time: 0.468896ms    (CUDA Measured)
     passed
 ==== work-efficient scan, power-of-two, shared memory ====
-   elapsed time: 1.72819ms    (CUDA Measured)
+   elapsed time: 0.216576ms    (CUDA Measured)
     passed
 ==== work-efficient scan, non-power-of-two, shared memory ====
-   elapsed time: 1.71594ms    (CUDA Measured)
+   elapsed time: 0.2104ms    (CUDA Measured)
     passed
 ==== thrust scan, power-of-two ====
-   elapsed time: 1.39664ms    (CUDA Measured)
+   elapsed time: 0.621248ms    (CUDA Measured)
     passed
 ==== thrust scan, non-power-of-two ====
-   elapsed time: 0.878592ms    (CUDA Measured)
+   elapsed time: 0.183968ms    (CUDA Measured)
     passed
 
 *****************************
 ** STREAM COMPACTION TESTS **
 *****************************
-    [   1   0   2   2   0   2   3   3   1   0   1   1   0 ...   2   0 ]
+    [   0   1   1   0   1   0   3   3   0   0   3   0   0 ...   1   0 ]
 ==== cpu compact without scan, power-of-two ====
-   elapsed time: 37.7629ms    (std::chrono Measured)
-    [   1   2   2   2   3   3   1   1   1   3   3   1   2 ...   1   2 ]
+   elapsed time: 2.4059ms    (std::chrono Measured)
+    [   1   1   1   3   3   3   1   1   1   3   1   3   1 ...   3   1 ]
     passed
 ==== cpu compact without scan, non-power-of-two ====
-   elapsed time: 38.7192ms    (std::chrono Measured)
-    [   1   2   2   2   3   3   1   1   1   3   3   1   2 ...   1   2 ]
+   elapsed time: 2.4662ms    (std::chrono Measured)
+    [   1   1   1   3   3   3   1   1   1   3   1   3   1 ...   3   2 ]
     passed
 ==== cpu compact with scan, power-of-two ====
-   elapsed time: 111.219ms    (std::chrono Measured)
+   elapsed time: 4.6895ms    (std::chrono Measured)
     passed
 ==== cpu compact with scan, non-power-of-two ====
-   elapsed time: 108.872ms    (std::chrono Measured)
+   elapsed time: 5.1045ms    (std::chrono Measured)
     passed
 ==== work-efficient compact, power-of-two, no shared memory ====
-   elapsed time: 16.0604ms    (CUDA Measured)
+   elapsed time: 1.39776ms    (CUDA Measured)
     passed
 ==== work-efficient compact, non-power-of-two, no shared memory ====
-   elapsed time: 9.68435ms    (CUDA Measured)
+   elapsed time: 0.817856ms    (CUDA Measured)
     passed
 ==== work-efficient compact, power-of-two, shared memory ====
-   elapsed time: 4.68515ms    (CUDA Measured)
+   elapsed time: 0.602912ms    (CUDA Measured)
     passed
 ==== work-efficient compact, non-power-of-two, shared memory ====
-   elapsed time: 4.74637ms    (CUDA Measured)
+   elapsed time: 0.588288ms    (CUDA Measured)
     passed
 ==== thrust compact, power-of-two ====
-   elapsed time: 2.4105ms    (CUDA Measured)
+   elapsed time: 0.28656ms    (CUDA Measured)
     passed
 ==== thrust compact, non-power-of-two ====
-   elapsed time: 0.775072ms    (CUDA Measured)
+   elapsed time: 0.283488ms    (CUDA Measured)
     passed
 ```
-
-
