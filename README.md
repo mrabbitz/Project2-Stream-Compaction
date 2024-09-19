@@ -84,7 +84,16 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
   <img src="img/runtime_vs_blocksize.png" />
 </p>
 
-Based on the chart, it is clear that block size of 128 is optimal.
+| Block Size | Naive (ms) | Naive & Hardware-Efficient (ms) | Work-Efficient | Work-Efficient & Hardware-Efficient |
+| ---------- | ---------- | ------------------------------- | -------------- | ----------------------------------- |
+|32          |191.8       |24                               |47.6            |13.1                                 |
+|64          |116.9       |14.4                             |47.9            |9.7                                  |
+|128         |116.8       |13.8                             |47.4            |9.3                                  |
+|256         |116.8       |14                               |47.8            |9.6                                  |
+|512         |116.8       |14.4                             |48.3            |10.5                                 |
+|1024        |118.1       |16.6                             |50.4            |12.4                                 |
+
+Based on the results, it is clear that block size of 128 is optimal.
 
 ### Runtime
 **This includes the CPU Scan implementation, the GPU Scan implementations, and the Thrust Scan**
