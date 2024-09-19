@@ -77,10 +77,16 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 
 ## Part 3: Performance Analysis
 ### Optimal Block Size
-**For each Scan**
+**This is only for the GPU Scan implementations**
+<p align="left">
+  <img src="img/runtime_vs_blocksize.png" />
+</p>
 
 ### Runtime
-**For each Scan of optimized Block Size**
+**This includes the CPU Scan implementation, the GPU Scan implementations, and the Thrust Scan**
+<p align="left">
+  <img src="img/runtime_vs_arraysize.png" />
+</p>
 
 **Look at Thrust Implementation**
 
