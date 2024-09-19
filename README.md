@@ -77,16 +77,58 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 
 ## Part 3: Performance Analysis
 ### Optimal Block Size
-**For each Scan**
+**For each GPU Scan implementation, find the block size that gives the minimal runtime on the GPU**
+
+**Each data point is the average of 100 runtime samples**
+<p align="left">
+  <img src="img/runtime_vs_blocksize.png" />
+</p>
+
+| Block Size | Naive (ms) | Naive & Hardware-Eff (ms) | Work-Eff | Work-Eff & Hardware-Eff |
+| ---------- | ---------- | ------------------------- | -------- | ----------------------- |
+|32          |191.8       |24                         |47.6      |13.1                     |
+|64          |116.9       |14.4                       |47.9      |9.7                      |
+|128         |116.8       |13.8                       |47.4      |9.3                      |
+|256         |116.8       |14                         |47.8      |9.6                      |
+|512         |116.8       |14.4                       |48.3      |10.5                     |
+|1024        |118.1       |16.6                       |50.4      |12.4                     |
+
+Based on the results, it is clear that block size of 128 is optimal.
 
 ### Runtime
-**For each Scan of optimized Block Size**
+**Includes the CPU Scan implementation, all GPU Scan implementations, and the Thrust Scan**
 
-**Look at Thrust Implementation**
+**Each data point is the average of 100 runtime samples**
+<p align="left">
+  <img src="img/runtime_vs_arraysize.png" />
+</p>
+
+|  Array Size  | CPU (ms) | Naive (ms)  | Naive & Hardware-Eff (ms)  | Work-Eff  | Work-Eff & Hardware-Eff  | Thrust (ms)  |
+| ------------ | -------- |------------ | -------------------------- | --------- | ------------------------ | ------------ |
+|2<sup>10</sup>|0.0005    |0.0332       |0.0626                      |0.0786     |0.0742                    |0.0670        |
+|2<sup>12</sup>|0.0018    |0.0390       |0.0570                      |0.1122     |0.0766                    |0.1143        |
+|2<sup>14</sup>|0.0068    |0.0494       |0.0589                      |0.1236     |0.0598                    |0.0514        |
+|2<sup>16</sup>|0.0241    |0.0756       |0.1145                      |0.1271     |0.0776                    |0.0793        |
+|2<sup>18</sup>|0.1092    |0.1705       |0.2576                      |0.1742     |0.1362                    |0.1640        |
+|2<sup>20</sup>|0.5457    |0.8490       |0.3955                      |0.4744     |0.2322                    |0.2773        |
+|2<sup>22</sup>|2.8498    |2.9690       |0.7290                      |1.4791     |0.4043                    |0.3592        |
+|2<sup>24</sup>|13.7399   |12.8068      |1.9275                      |5.9673     |1.2438                    |0.6996        |
+
+Based on the results, we see that the CPU implementation is the fastest up to array size 2<sup>18</sup>.
+As array size continues to increase past this, all of the GPU algorithms besides Naive get relatively exponentially faster.
+Work-Efficient, although much better than CPU and Naive, does itself start to have exponentially longer run times as we get to very large sizes.
+The Naive & Hardware-Efficient Scan and Work-Efficient & Hardware-Efficient Scan both exemplify the signficance of using shared memory best practices (no bank conflicts) and warp partitioning.
+Thrust clearly starts to pull away as we get to the largest array sizes, but I am proud of how my Work-Efficient & Hardware-Efficient Scan gives it a run for its money!
+
 
 ### Performance Bottlenecks
 
-### Output
+
+
+### Sample Output
+This output is used to test the correctness and timing of all Scan and Stream Compaction implementations.
+
+In this sample, Array Size of 2<sup>1</sup> is used.
 
 
 
