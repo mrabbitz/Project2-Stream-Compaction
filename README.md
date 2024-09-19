@@ -93,16 +93,6 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 |512         |116.8       |14.4                       |48.3      |10.5                     |
 |1024        |118.1       |16.6                       |50.4      |12.4                     |
 
-<table style="font-size: 12px;">
-  <tr><th>Block Size</th><th>Naive (ms)</th><th>Naive & Hardware-Eff (ms)</th><th>Work-Eff</th><th>Work-Eff & Hardware-Eff</th></tr>
-  <tr><td>32</td><td>191.8</td><td>24</td><td>47.6</td><td>13.1</td></tr>
-  <tr><td>64</td><td>116.9</td><td>14.4</td><td>47.9</td><td>9.7</td></tr>
-  <tr><td>128</td><td>116.8</td><td>13.8</td><td>47.4</td><td>9.3</td></tr>
-  <tr><td>256</td><td>116.8</td><td>14</td><td>47.8</td><td>9.6</td></tr>
-  <tr><td>512</td><td>116.8</td><td>14.4</td><td>48.3</td><td>10.5</td></tr>
-  <tr><td>1024</td><td>118.1</td><td>16.6</td><td>50.4</td><td>12.4</td></tr>
-</table>
-
 Based on the results, it is clear that block size of 128 is optimal.
 
 ### Runtime
