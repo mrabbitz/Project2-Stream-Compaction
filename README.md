@@ -127,7 +127,7 @@ Another inefficiency of the Naive Scan is the absence of warp partitioning best 
 Warp partitioning involves dividing threads from a block into warps, aiming to partition based on consecutive increasing thread indices.
 This approach minimizes divergent branches and allows warps to retire early, freeing up GPU resources for other available work.
 
-Lastly, while the Naive & Hardware-Efficient Scan and Work-Efficient & Hardware-Efficient Scan are optimized with shared memory and warp partitioning practices, they introduce a bottleneck known as bank conflicts specific to shared memory.
+Lastly, while the Naive & Hardware-Efficient Scan and Work-Efficient & Hardware-Efficient Scan are optimized with shared memory and warp partitioning practices, they introduce a bottleneck known as bank conflicts (specific to shared memory).
 Shared memory is divided into 32 banks, allowing each bank to service one address per cycle.
 Although bank conflicts were not an issue in the Naive & Hardware-Efficient Scan, they emerged during the initial implementation stages of the Work-Efficient & Hardware-Efficient Scan.
 To address this, a padding element was added after every 32 shared memory elements, effectively alleviating these bank conflicts and leading to improved performance.
