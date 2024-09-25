@@ -58,7 +58,7 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 
 #### Stream Compaction with Scan is described in 3 steps:
 1. **Create Binary Map:** use the input array to generate a binary map array indicating the validity of each input element (0 for invalid, 1 for valid)
-2. **Scan:** perform Scan on the binary map to generate an array of indices that indicate the compacted array's positions of valid input elements
+2. **Scan:** perform Scan on the binary map to generate an array of indices that indicate the compacted array positions of valid input elements
 3. **Scatter:** for each index in the binary map that indicates a valid input element - use the index to retrieve the valid element data from the input array, and use the same index to retrieve the compacted array index from the Scan output array. Use these two retrieved values to place the valid element data into the compacted array
 
 <p align="left">
