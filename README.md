@@ -54,7 +54,7 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 |![GPU Scan Arb Size Array](img/scan_array_arb_size.PNG)|
 
 ### Stream Compaction
-**Compaction removes invalid elements (0s) from an array of randomized ints**
+**For this project, Stream Compaction is performed on an array of randomized non-negative integers, where elements with a value of 0 are considered "invalid elements" and those with positive values are deemed "valid elements."**
 
 #### Stream Compaction with Scan is described in 3 steps:
 1. **Create Binary Map:** use the input array to create a binary map array indicating the validity of each input element
