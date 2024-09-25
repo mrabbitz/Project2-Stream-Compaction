@@ -48,7 +48,7 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 |:--:|
 |Upsweep <tr></tr>|
 |![GPU Exclusive Efficient Upsweep](img/gpu_exclusive_efficient_upsweep.PNG) <tr></tr>|
-||
+|<tr></tr>|
 |Downsweep <tr></tr>|
 |![GPU Exclusive Efficient Upsweep](img/gpu_excluisve_efficient_downsweep.PNG)|
 
