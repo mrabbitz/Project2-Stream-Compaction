@@ -126,7 +126,7 @@ Another inefficiency of the Naive Scan is the absense of warp partitioning best 
 Lastly, since the Naive & Hardware-Efficient and Work-Efficient & Hardware-Efficient implementations are optimized with shared memory and warp paritioning best practices, another bottleneck comes into play called bank conflicts. Shared memory is split up into 32 banks such that each bank can service one address per cycle. This was not a problem when implementing the Naive & Hardware-Efficient Scan, but was introduced in the initial implementation stages of the Work-Efficient & Hardware-Efficient Scan. Through adding a padding element after every 32 shared memory elements, the bank conflicts were alleviated and performance increased.
 
 ### Sample Output
-This output is used to test the correctness and timing of all Scan and Stream Compaction implementations.
+This is a sample of the output used to test the correctness and timing of all Scan and Stream Compaction implementations.
 
 In this sample, Array Size of 2<sup>20</sup> is used.
 
