@@ -52,10 +52,9 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 |Downsweep <tr></tr>|
 |![GPU Exclusive Efficient Upsweep](img/gpu_excluisve_efficient_downsweep.PNG)|
 
-#### Inclusive Scan - Hardware Efficiency with shared memory
-<p align="left">
-  <img src="img/scan_array_arb_size.PNG" />
-</p>
+|Inclusive Scan - GPU with Hardware Efficiency using shared memory - Arrays of Arbitrary Size|
+|:--:|
+|![GPU Scan Arb Size Array](img/scan_array_arb_size.PNG)|
 
 ### Stream Compaction
 **Compaction removes invalid elements (0s) from an array of randomized ints**
