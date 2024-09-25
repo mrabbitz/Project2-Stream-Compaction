@@ -9,7 +9,7 @@ CUDA Stream Compaction
 
 ## Part 1: Introduction
 
-This project implements various Stream Compaction algorithms, with an emphasis on those utilizing the Scan algorithm, to highlight the importance of designing GPU hardware-optimized algorithms that leverage parallel computation for superior performance compared to CPU implementations.
+This project implements various Stream Compaction algorithms, with an emphasis on those utilizing the Scan algorithm, to highlight the importance of designing GPU hardware-optimized algorithms that leverage parallel computation for superior performance.
 
 ### Stream Compaction
 Stream compaction involves filtering an input data set to produce a new collection that contains only the elements meeting a specified condition, while preserving their original order. This process reduces the size of the data set by removing unwanted elements, which is crucial for optimizing performance and memory usage in applications like path tracing, collision detection, etc.
