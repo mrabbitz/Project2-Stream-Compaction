@@ -42,7 +42,7 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 
 |Inclusive Scan - GPU Naive Algorithm|
 |:--:|
-|<p align="left"><img src="img/gpu_inclusive_naive.PNG" /></p>|
+|![GPU Inclusive Naive](img/gpu_inclusive_naive.PNG)|
 
 #### Exclusive Scan - GPU Work-Efficient Algorithm:
 **Upsweep**
