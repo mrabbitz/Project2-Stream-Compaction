@@ -66,10 +66,10 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 </p>
 
 #### Implementations
-1. **CPU without Scan:** - sequential loop over input elements while placing valid input data into the compacted array
-2. **CPU with Scan:** - perform Step 1 with sequential loop over n elements, perform Step 2 using CPU Scan, then perform Step 3 with sequential loop over n elements
-3. **GPU with Work-Efficient Scan:** - perform Step 1 over n elements in one parallel pass, perform Step 2 using Work-Efficient Scan, then perform Step 3 over n elements in one parallel pass
-4. **GPU with Work-Efficient and Hardware-Efficient Scan:** - same as above line except using Work-Efficient and Hardware-Efficient Scan
+1. **CPU without Scan:**  sequential loop over input elements while placing valid input data into the compacted array
+2. **CPU with Scan:**  perform Step 1 with sequential loop over n elements, perform Step 2 using CPU Scan, then perform Step 3 with sequential loop over n elements
+3. **GPU with Work-Efficient Scan:**  perform Step 1 over n elements in one parallel pass, perform Step 2 using Work-Efficient Scan, then perform Step 3 over n elements in one parallel pass
+4. **GPU with Work-Efficient and Hardware-Efficient Scan:**  same as above line except using Work-Efficient and Hardware-Efficient Scan
 5. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::remove_if
 
 ## Part 3: Performance Analysis
