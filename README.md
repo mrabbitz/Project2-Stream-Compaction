@@ -123,9 +123,14 @@ As we approach the largest tested array sizes, Thrust clearly pulls ahead, but I
 The Work-Efficient Scan is clearly faster than the Naive Scan due to the reduced overall work involved, as described in the implementation details in the [Part 2](#part-2-implementation-details) Scan section.
 However, both implementations suffer from a significant number of read and write operations to and from global memory, resulting in poor performance compared to Hardware-Efficient implementations that utilize shared memory.
 
-Another inefficiency of the Naive Scan is the absence of warp partitioning best practices, which the other GPU Scan implementations adopt. Warp partitioning involves dividing threads from a block into warps, aiming to partition based on consecutive increasing thread indices. This minimizes divergent branches and allows warps to retire early, freeing up GPU resources for other available work.
+Another inefficiency of the Naive Scan is the absence of warp partitioning best practices, which the other GPU Scan implementations adopt.
+Warp partitioning involves dividing threads from a block into warps, aiming to partition based on consecutive increasing thread indices.
+This approach minimizes divergent branches and allows warps to retire early, freeing up GPU resources for other available work.
 
-Lastly, while the Naive & Hardware-Efficient Scan and Work-Efficient & Hardware-Efficient Scan are optimized with shared memory and warp partitioning practices, they introduce another bottleneck known as bank conflicts. Shared memory is divided into 32 banks, allowing each bank to service one address per cycle. While bank conflicts were not an issue in the Naive & Hardware-Efficient Scan, they emerged during the initial implementation stages of the Work-Efficient & Hardware-Efficient Scan. By adding a padding element after every 32 shared memory elements, these bank conflicts were alleviated, leading to improved performance.
+Lastly, while the Naive & Hardware-Efficient Scan and Work-Efficient & Hardware-Efficient Scan are optimized with shared memory and warp partitioning practices, they introduce a bottleneck known as bank conflicts specific to shared memory.
+Shared memory is divided into 32 banks, allowing each bank to service one address per cycle.
+Although bank conflicts were not an issue in the Naive & Hardware-Efficient Scan, they emerged during the initial implementation stages of the Work-Efficient & Hardware-Efficient Scan.
+To address this, a padding element was added after every 32 shared memory elements, effectively alleviating these bank conflicts and leading to improved performance.
 
 ### Sample Output
 This is a sample of the output used to test the correctness and timing of all Scan and Stream Compaction implementations.
