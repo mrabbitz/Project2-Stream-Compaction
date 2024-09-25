@@ -128,7 +128,7 @@ Lastly, since the Naive & Hardware-Efficient and Work-Efficient & Hardware-Effic
 ### Sample Output
 This is a sample of the output used to test the correctness and timing of all Scan and Stream Compaction implementations.
 
-In this sample, Array Size of 2<sup>20</sup> is used.
+In this sample, array size is 2<sup>20</sup>
 
 ```
 ****************
