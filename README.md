@@ -27,9 +27,7 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 
 ## Part 2: Implementation Details
 
-**n represents the number of elements in the array**
-
-**All implementations support arrays of arbitrary n - small, large, powers of two, not powers of two**
+**All implementations support arrays of arbitrary size**
 
 ### Scan
 #### Implementations
