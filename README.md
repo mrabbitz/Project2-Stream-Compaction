@@ -129,7 +129,7 @@ This approach minimizes divergent branches and allows warps to retire early, fre
 
 Lastly, while the Naive & Hardware-Efficient Scan and Work-Efficient & Hardware-Efficient Scan are optimized with shared memory and warp partitioning practices, they introduce a bottleneck known as bank conflicts that are specific to shared memory.
 Shared memory is divided into 32 banks, allowing each bank to service one address per cycle.
-Although bank conflicts were not an issue in the Naive & Hardware-Efficient Scan, they emerged during the initial implementation stages of the Work-Efficient & Hardware-Efficient Scan.
+Although bank conflicts were not an issue in the Naive & Hardware-Efficient Scan, they emerged during the later implementation stages of the Work-Efficient & Hardware-Efficient Scan.
 To address this, a padding element was added after every 32 shared memory elements, effectively alleviating these bank conflicts and leading to improved performance.
 
 
