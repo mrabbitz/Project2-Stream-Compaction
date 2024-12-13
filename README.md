@@ -9,7 +9,7 @@ CUDA Stream Compaction
 
 ## Part 1: Introduction
 
-This project focuses on implementing various Stream Compaction algorithms, including those utilizing the Scan algorithm, to emphasize the importance of designing GPU hardware-optimized algorithms that leverage parallel computation for superior performance compared to CPU implementations.
+This project implements various Stream Compaction algorithms, with an emphasis on those utilizing the Scan algorithm, to highlight the importance of designing GPU hardware-optimized algorithms that leverage parallel computation for superior performance.
 
 ### Stream Compaction
 Stream compaction involves filtering an input data set to produce a new collection that contains only the elements meeting a specified condition, while preserving their original order. This process reduces the size of the data set by removing unwanted elements, which is crucial for optimizing performance and memory usage in applications like path tracing, collision detection, etc.
@@ -27,52 +27,49 @@ The Scan algorithm, also known as the all-prefix-sums operation, computes prefix
 
 ## Part 2: Implementation Details
 
-**n represents the number of elements in the array**
-
-**All implementations support arrays of arbitrary n - small, large, powers of two, not powers of two**
+**All implementations support arrays of arbitrary size**
 
 ### Scan
 #### Implementations
 1. **CPU:**  O(n) addition operations - sequential loop over array elements, accumulating a sum at each iteration
 2. **GPU Naive Algorithm:**  O(n * log<sub>2</sub>(n)) addition operations - over log<sub>2</sub>(n) passes, for pass p starting at p = 1, compute the partial sums of n - 2<sup>p - 1</sup> elements in parallel
 3. **GPU Work-Efficient Algorithm:**  O(n) operations - performs scan into two phases: parallel upsweep (reduction) with n - 1 adds (O(n)), and parallel downsweep with n - 1 adds (O(n)) and n - 1 swaps (O(n))
-4. **GPU Naive Algorithm with Hardware Efficiency:**  shared memory - divide the array into evenly-sized blocks, each of which is scanned by a single thread block. Utilize shared memory within each thread block to perform the scan and write the total sum of each block to a separate array of block sums. Then, scan the array of block sums to create an array of block increments, which are added to all elements within their respective blocks.
-5. **GPU Work-Efficient Algorithm with Hardware Efficiency:**  shared memory - same process as above
+4. **GPU Naive Algorithm with Hardware Efficiency:**  uses shared memory - divide the array into blocks, then scan each block in parallel over many SMs (with each block corresponding to a thread block). Utilize shared memory within each thread block to perform the scan and write the total sum of each block to a new array of block sums. Scan the array of block sums to compute an array of block increments, which are then added to each element in the corresponding scanned block from the initial scan (e.g. the zero-indexed block increment from the block increments array is added to each element in the zero-indexed scanned block of the divided input array).
+5. **GPU Work-Efficient Algorithm with Hardware Efficiency:**  uses shared memory - same process as above
 6. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::exclusive_scan
 
-#### Inclusive Scan - GPU Naive Algorithm:
-<p align="left">
-  <img src="img/gpu_inclusive_naive.PNG" />
-</p>
+|Inclusive Scan - GPU Naive Algorithm|
+|:--:|
+|![GPU Inclusive Naive](img/gpu_inclusive_naive.PNG)|
 
-#### Exclusive Scan - GPU Work-Efficient Algorithm:
-**Upsweep**
-<p align="left">
-  <img src="img/gpu_exclusive_efficient_upsweep.PNG" />
-</p>
+|Exclusive Scan - GPU Work-Efficient Algorithm|
+|:--:|
+|Upsweep <tr></tr>|
+|![GPU Exclusive Efficient Upsweep](img/gpu_exclusive_efficient_upsweep.PNG) <tr></tr>|
+|Downsweep <tr></tr>|
+|![GPU Exclusive Efficient Upsweep](img/gpu_excluisve_efficient_downsweep.PNG)|
 
-**Downsweep**
-<p align="left">
-  <img src="img/gpu_excluisve_efficient_downsweep.PNG" />
-</p>
+|Inclusive Scan - GPU with Hardware Efficiency using shared memory|
+|:--:|
+|![GPU Scan Arb Size Array](img/scan_array_arb_size.PNG)|
 
 ### Stream Compaction
-**Compaction removes invalid elements (0s) from an array of randomized ints**
+**For this project, Stream Compaction is performed on an array of randomized non-negative integers, where elements with a value of 0 are considered 'invalid' and those with positive values are considered 'valid'.**
 
 #### Stream Compaction with Scan is described in 3 steps:
-1. **Create Binary Map:** use the input array to create a binary map array indicating the validity of each input element
-2. **Scan:** perform Scan on the binary array to generate a map of index values which correspond to the compacted array index of sequential valid input elements
-3. **Scatter:** for the indices of the binary array that indicate valid input elements, use those indices to index the Scan output array to determine the compated array index of the valid element, then place valid element data into the compacted array
+1. **Create Binary Map:** use the input array to generate a binary map array indicating the validity of each input element (0 for invalid, 1 for valid)
+2. **Scan:** perform Scan on the binary map to generate an array of indices that indicate the compacted array positions of valid input elements
+3. **Scatter:** for each index in the binary map that indicates a valid input element - use the index to retrieve the valid element data from the input array, and use the same index to retrieve the compacted array index from the Scan output array. Use these two retrieved values to place the valid element data into the compacted array
 
 <p align="left">
   <img src="img/compaction_with_scan.PNG" />
 </p>
 
 #### Implementations
-1. **CPU without Scan:** - sequential loop over input elements while placing valid input data into the compacted array
-2. **CPU with Scan:** - perform Step 1 with sequential loop over n elements, perform Step 2 using CPU Scan, then perform Step 3 with sequential loop over n elements
-3. **GPU with Work-Efficient Scan:** - perform Step 1 over n elements in one parallel pass, perform Step 2 using Work-Efficient Scan, then perform Step 3 over n elements in one parallel pass
-4. **GPU with Work-Efficient and Hardware-Efficient Scan:** - same as above line except using Work-Efficient and Hardware-Efficient Scan
+1. **CPU without Scan:**  sequential loop over n input elements while placing valid input data into the compacted array
+2. **CPU with Scan:**  Create Binary Map with sequential loop over n input elements, Scan using CPU Scan, then Scatter with sequential loop over n elements
+3. **GPU with Work-Efficient Scan:**  Create Binary Map over n input elements in one parallel pass, Scan using Work-Efficient Scan, then Scatter over n elements in one parallel pass
+4. **GPU with Work-Efficient & Hardware-Efficient Scan:**  same as above line except using Work-Efficient & Hardware-Efficient Scan
 5. **GPU using [Thrust CUDA library](https://nvidia.github.io/cccl/thrust):**  wrapper function using thrust::remove_if
 
 ## Part 3: Performance Analysis
@@ -114,24 +111,33 @@ Based on the results, it is clear that block size of 128 is optimal.
 |2<sup>22</sup>|2.8498    |2.9690       |0.7290                      |1.4791     |0.4043                    |0.3592        |
 |2<sup>24</sup>|13.7399   |12.8068      |1.9275                      |5.9673     |1.2438                    |0.6996        |
 
-Based on the results, we see that the CPU implementation is the fastest up to array size 2<sup>18</sup>.
-As array size continues to increase past this, all of the GPU algorithms besides Naive get relatively exponentially faster.
-Work-Efficient, although much better than CPU and Naive, does itself start to have exponentially longer run times as we get to very large sizes.
-The Naive & Hardware-Efficient Scan and Work-Efficient & Hardware-Efficient Scan both exemplify the signficance of using shared memory best practices (no bank conflicts) and warp partitioning.
-Thrust clearly starts to pull away as we get to the largest array sizes, but I am proud of how my Work-Efficient & Hardware-Efficient Scan gives it a run for its money!
+Based on the results, CPU Scan is the fastest up to an array size of 2<sup>18</sup>.
+Beyond this size, all GPU Scans, except for Naive Scan, exhibit exponential speedups relative to CPU Scan.
+Work-Efficient Scan, although much faster than both CPU Scan and Naive Scan at large array sizes, begins to experience exponentially longer run times as we reach these sizes.
+The results of Naive & Hardware-Efficient Scan and Work-Efficient & Hardware-Efficient Scan demonstrate the importance of effectively utilizing shared memory (e.g. avoiding bank conflicts) and incorporating warp partitioning.
+As we approach the largest tested array sizes, Thrust clearly pulls ahead, but I am proud of how my Work-Efficient & Hardware-Efficient Scan competes closely with it!
 
 
 ### Performance Bottlenecks
 
-The Work-Efficient Scan is clearly faster than the Naive Scan since there is less overall work to do as described in the implementation details in the [Part 2](#part-2-implementation-details) Scan section.
-However, since they both have a vast amount of read and write operations from/to global memory, they both perform poorly relative to the Hardware-Efficient implementations that use shared memory.
-Another inefficiency of the Naive Scan is the absense of warp partitioning best practices, which the rest of the GPU Scan implementations utilize. Warp paritioning is how threads from a block are divided into warps, and the goal is to partition based on consecutive increasing thread indices such that divergent branches are minimized and warps are retired early, freeing up resources for the GPU to perform any other available work with.
-Lastly, since the Naive & Hardware-Efficient and Work-Efficient & Hardware-Efficient implementations are optimized with shared memory and warp paritioning best practices, another bottleneck comes into play called bank conflicts. Shared memory is split up into 32 banks such that each bank can service one address per cycle. This was not a problem when implementing the Naive & Hardware-Efficient Scan, but was introduced in the initial implementation stages of the Work-Efficient & Hardware-Efficient Scan. Through adding a padding element after every 32 shared memory elements, the bank conflicts were alleviated and performance increased.
+The Work-Efficient Scan is clearly faster than the Naive Scan due to the reduced overall work involved, as described in the implementation details in the [Part 2](#part-2-implementation-details) Scan section.
+However, both implementations suffer from a significant number of read and write operations to and from global memory, resulting in poor performance compared to Hardware-Efficient implementations that utilize shared memory.
+
+Another inefficiency of the Naive Scan is the absence of warp partitioning best practices, which the other GPU Scan implementations adopt.
+Warp partitioning involves dividing threads from a block into warps, aiming to partition based on consecutive increasing thread indices.
+This approach minimizes divergent branches and allows warps to retire early, freeing up GPU resources for other available work.
+
+Lastly, while the Naive & Hardware-Efficient Scan and Work-Efficient & Hardware-Efficient Scan are optimized with shared memory and warp partitioning practices, they introduce a bottleneck known as bank conflicts that are specific to shared memory.
+Shared memory is divided into 32 banks, allowing each bank to service one address per cycle.
+Although bank conflicts were not an issue in the Naive & Hardware-Efficient Scan, they emerged during the later implementation stages of the Work-Efficient & Hardware-Efficient Scan.
+To address this, a padding element was added after every 32 shared memory elements, effectively alleviating these bank conflicts and leading to improved performance.
+
+
 
 ### Sample Output
-This output is used to test the correctness and timing of all Scan and Stream Compaction implementations.
+This is a sample of the output used to test the correctness and timing of all Scan and Stream Compaction implementations.
 
-In this sample, Array Size of 2<sup>20</sup> is used.
+In this sample, array size is 2<sup>20</sup>
 
 ```
 ****************
